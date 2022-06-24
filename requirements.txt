@@ -1,0 +1,6 @@
+subgrounds==0.1.1
+streamlit
+streamlit-autorefresh
+black
+altair
+web3
