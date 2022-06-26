@@ -299,7 +299,7 @@ def get_veBAL_unlocks_df(veBAL_subgraph, sg):
       veBAL_data.lockedBalance
     ])
     df['Date'] = df['votingEscrowLocks_unlockTime'].apply(lambda x: datetime.utcfromtimestamp(int(x)))
-
+    df['timestamp'] = df['votingEscrowLocks_unlockTime']
     df = df.rename(columns={
         'votingEscrowLocks_lockedBalance':'Amount To Unlock'
         })
@@ -318,6 +318,7 @@ def get_veBAL_locked_df(veBAL_subgraph, sg):
       veBAL_data.lockedBalance
     ])
     df['Date'] = df['votingEscrowLocks_unlockTime'].apply(lambda x: datetime.utcfromtimestamp(int(x)))
+    df['timestamp'] = df['votingEscrowLocks_unlockTime']
 
     df = df.rename(columns={
         'votingEscrowLocks_lockedBalance':'Locked Balance'

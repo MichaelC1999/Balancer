@@ -11,6 +11,12 @@ import datafields
 import charts
 import quarterTable
 from web3 import Web3
+from streamlit_echarts import st_pyecharts
+from CustomCharts import CustomLineChart, CustomBarChart, CustomPieChart
+from utils import *
+from config import *
+
+
 
 
 with open('./treasuryTokens.json', 'r') as f:
@@ -270,39 +276,89 @@ if st.session_state['tab'] == 'Main':
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        tvl = charts.build_financial_chart(financial_df, 'Total Value Locked')
-        st.altair_chart(tvl, use_container_width=False)
+        # frame_radio = alt.binding_radio(options=chart_frame_option_timestamp_diffs)
+        # now = datetime.utcnow().timestamp()
+
+        # frame_select = alt.selection_single(fields=['timestamp'], bind=frame_radio, name="frame")
+        # chart_frame_option_timestamp_diffs = [86400, 604800, 2628000, 31535965]
+        # frame = pn.widgets.RadioBoxGroup(name='Company', options=chart_frame_option_timestamp_diffs)
+        # # frame_radio = alt.binding_radio(options=chart_frame_option_timestamp_diffs)
+        # now = datetime.utcnow().timestamp()
+        # @pn.depends(frame.param.value)
+        # start_date = now - frame.param.value
+        # end_date = now
+        # # create filter mask for the dataframe
+        # mask = (df['Date'] > start_date) & (df['Date'] <= end_date)
+        # df = df.loc[mask] # filter the dataframe
+
+        chart = charts.generate_chart_interactive(financial_df, "Total Value Locked (USD)", yaxis='Total Value Locked')
+
+        st_pyecharts(
+
+            chart=chart.LINE_CHART,
+            height="450px",
+            key='Total Value Locked',
+        )
+        # tvl = charts.generate_chart_interactive(financial_df, 'Total Value Locked',)
+        # st.altair_chart(tvl, use_container_width=False)
 
     with col2:
-        vol = charts.build_financial_chart(financial_df, 'Daily Volume USD')
-        st.altair_chart(vol, use_container_width=False)
+        chart = charts.generate_chart_interactive(financial_df, "Daily Volume (USD)", yaxis='Daily Volume USD')
+
+        st_pyecharts(
+            chart=chart.LINE_CHART,
+            height="450px",
+            key='Daily Volume USD',
+        )
 
     with col3:
-        pools = charts.build_financial_chart(usage_df, 'Total Pool Count', y_axis_format=None)
-        st.altair_chart(pools, use_container_width=False)
+        chart = charts.generate_chart_interactive(usage_df, 'Total Pool Count', yaxis= 'Total Pool Count')
+
+        st_pyecharts(
+            chart=chart.LINE_CHART,
+            height="450px",
+            key= 'Total Pool Count',
+        )
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        daily_swaps = charts.build_financial_chart(usage_df, "Daily Swap Count", y_axis_format=None)
-        st.altair_chart(daily_swaps, use_container_width=True)
-
+        chart = charts.generate_chart_interactive(usage_df, "Daily Swap Count", yaxis="Daily Swap Count")
+        st_pyecharts(
+            chart=chart.LINE_CHART,
+            height="450px",
+            key= 'Daily Swap Count',
+        )
     with col2:
-        daily_supply_revenues = charts.build_financial_chart(financial_df, "Daily Supply Revenue")
-        st.altair_chart(daily_supply_revenues, use_container_width=True)
-
+        chart = charts.generate_chart_interactive(financial_df, "Daily Supply Revenue", yaxis="Daily Supply Revenue")
+        st_pyecharts(
+            chart=chart.LINE_CHART,
+            height="450px",
+            key= "Daily Supply Revenue",
+        )
     with col3:
-        protocol_treasury = charts.build_financial_chart(financial_df, "Protocol Controlled Value USD", "Protocol Treasury")
-        st.altair_chart(protocol_treasury, use_container_width=True)
-
+        chart = charts.generate_chart_interactive(financial_df, "Protocol Treasury", yaxis="Protocol Controlled Value USD")
+        st_pyecharts(
+            chart=chart.LINE_CHART,
+            height="450px",
+            key= "Protocol Treasury",
+        )
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        veBAL_locked =  charts.build_financial_chart(veBAL_locked_df, "Locked Balance", "Locked Balance", ".2f")
-        st.altair_chart(veBAL_locked, use_container_width=False)
+        chart = charts.generate_chart_interactive(veBAL_locked_df, "Locked Balance", yaxis="Locked Balance")
+        st_pyecharts(
+            chart=chart.LINE_CHART,
+            height="450px",
+            key= "Locked Balance",
+        )
     with col2:
         daily_veBAL_revenues = charts.build_multi_line_veBAL_chart(financial_df)
-        st.altair_chart(daily_veBAL_revenues, use_container_width=False)
+        st_pyecharts(
+            chart=daily_veBAL_revenues.LINE_CHART,
+            height="450px",
+            key= "Revenue",
+        )
 
     with col3:
         # veBAL_unlocks =  charts.build_bar_chart(veBAL_unlocks_df, "Amount To Unlock")
@@ -312,18 +368,24 @@ if st.session_state['tab'] == 'Main':
 
 
     with col1:
-        base_yield = charts.build_financial_chart(mainnet_financial_df, "Base Yield", "Mainnet LP Yield")
-        st.altair_chart(base_yield, use_container_width=True)
-
+        chart = charts.generate_chart_interactive(mainnet_financial_df, "Mainnet LP Yield", yaxis="Base Yield")
+        st_pyecharts(
+            chart=chart.LINE_CHART,
+            height="450px",
+            key= "Mainnet LP Yield",
+        )
     with col2:
         st.markdown('TEMP')
-        # base_yield = charts.build_financial_chart(matic_financial_df, "Base Yield", "Matic LP Yield")
+        # base_yield = chart = charts.generate_chart_interactive(matic_financial_df, "Base Yield", "Matic LP Yield")
         # st.altair_chart(base_yield, use_container_width=True)
 
     with col3:
-        base_yield = charts.build_financial_chart(arbitrum_financial_df, "Base Yield", "Arbitrum LP Yield")
-        st.altair_chart(base_yield, use_container_width=True)
-
+        chart = charts.generate_chart_interactive(arbitrum_financial_df, "Arbitrum LP Yield", yaxis="Base Yield")
+        st_pyecharts(
+            chart=chart.LINE_CHART,
+            height="450px",
+            key= "Arbitrum LP Yield",
+        )
     st.header('Quarterly Report')
 
     quarters = quarterTable.get_quarter_table(financial_df, usage_df)
@@ -377,14 +439,17 @@ elif st.session_state['tab'] == 'Liquidity Providers':
 
     with col1:
         st.subheader("Number of LPs")
-        # LP_count = charts.build_financial_chart(usage_df, "Total Pool Count")
+        # LP_count = charts.generate_chart_interactive(usage_df, "Total Pool Count",)
         # st.altair_chart(LP_count, use_container_width=True)
 
     with col2:
         st.subheader("Historical Yield")
-        historical_yield = charts.build_financial_chart(financial_df, "HistoricalYield")
-        st.altair_chart(historical_yield, use_container_width=True)
-
+        historical_yield = charts.generate_chart_interactive(financial_df, "Historical Yield",yaxis="HistoricalYield")
+        st_pyecharts(
+            chart=historical_yield.LINE_CHART,
+            height="450px",
+            key= "HistoricalYield",
+        )
     with col3:
         st.subheader("Median TVL")
 
@@ -442,7 +507,7 @@ elif st.session_state['tab'] == 'Traders':
 
     with col1:
         tx_df = pd.DataFrame({"Amount In": swaps_df.groupby('Date String')["Amount In"].max(), "Date String": swaps_df.groupby('Date String')["Date String"].first()})
-        tx_df["Date"] = tx_df["Date String"].apply(lambda x: datetime.strptime(x, "%Y-%m-%d"))
+        tx_df["Date"] = tx_df["Date String"].apply(lambda x: datetime.datetime.strptime(x, "%Y-%m-%d"))
         date_axis = alt.X("Date:T", axis=alt.Axis(title=None, format="%Y-%m-%d", labelAngle=45, tickCount=20))
         bar = alt.Chart(tx_df).mark_bar().encode(
             x=date_axis,
@@ -539,6 +604,7 @@ elif st.session_state['tab'] == 'By Pool':
     subgraph_to_use = globals()['balancerV2_' + chain]
     pool_data = datafields.get_pool_data_df(subgraph_to_use, sg, st.session_state['pool_label'])
     pool_timeseries = datafields.get_pool_timeseries_df(subgraph_to_use, sg, st.session_state['pool_label'])
+    pool_timeseries['timestamp'] = pool_timeseries['timestamp']/86400
     with st.container():
         st.subheader("Pool ENtity data" + str(pool_data['Name'].tolist()[0]))
 
@@ -564,15 +630,26 @@ elif st.session_state['tab'] == 'By Pool':
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        tvl = charts.build_financial_chart(pool_timeseries, 'Total Value Locked')
-        st.altair_chart(tvl, use_container_width=False)
+        tvl = charts.generate_chart_interactive(pool_timeseries, 'Total Value Locked', xaxis='timestamp', yaxis='Total Value Locked')
+        st_pyecharts(
+            chart=tvl.LINE_CHART,
+            height="450px",
+            key='Total Value Locked',
+        )
     with col2:
-        vol = charts.build_financial_chart(pool_timeseries, 'Daily Volume USD')
-        st.altair_chart(vol, use_container_width=False)
+        vol = charts.generate_chart_interactive(pool_timeseries, 'Daily Volume USD', xaxis='timestamp', yaxis='Daily Volume USD')
+        st_pyecharts(
+            chart=vol.LINE_CHART,
+            height="450px",
+            key='Daily Volume USD',
+        )
     with col3:
-        vol = charts.build_financial_chart(pool_timeseries, 'Daily Supply Revenue')
-        st.altair_chart(vol, use_container_width=False)
-
+        vol = charts.generate_chart_interactive(pool_timeseries, 'Daily Supply Revenue', xaxis='timestamp', yaxis='Daily Supply Revenue')
+        st_pyecharts(
+            chart=vol.LINE_CHART,
+            height="450px",
+            key='Daily Supply Revenue',
+        )
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -580,13 +657,20 @@ elif st.session_state['tab'] == 'By Pool':
 
     with col2:
         st.subheader("LP Yield")
-        base_yield_pool = charts.build_financial_chart(pool_timeseries, 'Base Yield', 'LP Yield')
-        st.altair_chart(base_yield_pool, use_container_width=False)
+        base_yield_pool = charts.generate_chart_interactive(pool_timeseries, 'LP Yield', xaxis='timestamp', yaxis='Base Yield')
+        st_pyecharts(
+            chart=base_yield_pool.LINE_CHART,
+            height="450px",
+            key='Base Yield',
+        )
     with col3:
         st.subheader("protocol revenue")
-        protocol_rev_from_pool = charts.build_financial_chart(pool_timeseries, 'Daily Protocol Revenue')
-        st.altair_chart(protocol_rev_from_pool, use_container_width=False)
-
+        protocol_rev_from_pool = charts.generate_chart_interactive(pool_timeseries, 'Daily Protocol Revenue', xaxis='timestamp', yaxis='Daily Protocol Revenue')
+        st_pyecharts(
+            chart=protocol_rev_from_pool.LINE_CHART,
+            height="450px",
+            key='Daily Protocol Revenue',
+        )
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -626,39 +710,64 @@ elif st.session_state['tab'] == 'By Chain':
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        tvl = charts.build_financial_chart(current_financial_df, 'Total Value Locked')
-        st.altair_chart(tvl, use_container_width=False)
-
+        tvl = charts.generate_chart_interactive(current_financial_df, 'Total Value Locked', yaxis='Total Value Locked')
+        st_pyecharts(
+            chart=tvl.LINE_CHART,
+            height="450px",
+            key='Total Value Locked',
+        )
     with col2:
-        vol = charts.build_financial_chart(current_financial_df, 'Daily Volume USD')
-        st.altair_chart(vol, use_container_width=False)
-
+        vol = charts.generate_chart_interactive(current_financial_df, 'Daily Volume USD', yaxis='Daily Volume USD')
+        st_pyecharts(
+            chart=vol.LINE_CHART,
+            height="450px",
+            key='Daily Volume USD',
+        )
     with col3:
-        pools = charts.build_financial_chart(current_usage_df, 'Total Pool Count', y_axis_format=None)
-        st.altair_chart(pools, use_container_width=False)
-
+        pools = charts.generate_chart_interactive(current_usage_df, 'Total Pool Count', yaxis='Total Pool Count')
+        st_pyecharts(
+            chart=pools.LINE_CHART,
+            height="450px",
+            key='Total Pool Count',
+        )
     col1, col2, col3 = st.columns(3)
 
     with col1:
         st.subheader("Number of LPs")
 
     with col2:
-        LP_revenues = charts.build_financial_chart(current_financial_df, "Daily Supply Revenue", "LP Revenues")
-        st.altair_chart(LP_revenues, use_container_width=True)
-
+        LP_revenues = charts.generate_chart_interactive(current_financial_df,"LP Revenues", yaxis="Daily Supply Revenue")
+        st_pyecharts(
+            chart=LP_revenues.LINE_CHART,
+            height="450px",
+            key="Daily Supply Revenue",
+        )
     with col3:
-        LP_yield = charts.build_financial_chart(current_financial_df, "Base Yield", "LP Yield")
-        st.altair_chart(LP_yield, use_container_width=True)
-
+        LP_yield = charts.generate_chart_interactive(current_financial_df, "LP Yield", yaxis="Base Yield")
+        st_pyecharts(
+            chart=LP_yield.LINE_CHART,
+            height="450px",
+            key="Base Yield",
+        )
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        daily_swaps_by_chain = charts.build_financial_chart(current_usage_df, "Daily Swap Count", "Number of Swaps", y_axis_format=None)
-        st.altair_chart(daily_swaps_by_chain, use_container_width=True)
+        daily_swaps_by_chain = charts.generate_chart_interactive(current_usage_df, "Number of Swaps", yaxis="Daily Swap Count")
+
+        st_pyecharts(
+
+            chart=daily_swaps_by_chain.LINE_CHART,
+            height="450px",
+            key='Daily Swap Count',
+        )
 
     with col2:
         protocol_rev_by_chain = charts.build_multi_line_rev_chart(datafields.get_revenue_df(current_financial_df, sg))
-        st.altair_chart(protocol_rev_by_chain, use_container_width=False)
+        st_pyecharts(
+            chart=protocol_rev_by_chain.LINE_CHART,
+            height="450px",
+            key= "Locked Balance",
+        )
 
     with col3:
         st.subheader("vebal rewards received")
@@ -741,18 +850,18 @@ else:
         st.altair_chart(protocol_rev, use_container_width=False)
 
     with col2:
-        ps_ratio = charts.build_financial_chart(revenue_df, 'P/S Ratio', y_axis_format=None)
+        ps_ratio = charts.generate_chart_interactive(revenue_df, 'P/S Ratio', y_axis_format=None,)
         st.altair_chart(ps_ratio, use_container_width=False)
 
     with col3:
-        pe_ratio = charts.build_financial_chart(revenue_df, 'P/E Ratio', y_axis_format=None)
+        pe_ratio = charts.generate_chart_interactive(revenue_df, 'P/E Ratio', y_axis_format=None,)
         st.altair_chart(pe_ratio, use_container_width=False)
 
     st.header('Usage Metrics')
 
     with st.container():
-        active = charts.build_financial_chart(usage_df, 'Daily Active Users', y_axis_format=None)
-        new = charts.build_financial_chart(usage_df, 'Cumulative New Users', y_axis_format=None)
+        active = charts.generate_chart_interactive(usage_df, 'Daily Active Users', y_axis_format=None,)
+        new = charts.generate_chart_interactive(usage_df, 'Cumulative New Users', y_axis_format=None,)
 
         st.altair_chart(active | new, use_container_width=False)
 
