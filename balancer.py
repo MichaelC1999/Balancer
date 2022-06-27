@@ -15,6 +15,8 @@ from streamlit_echarts import st_pyecharts
 from CustomCharts import CustomLineChart, CustomBarChart, CustomPieChart
 from utils import *
 from config import *
+from pyecharts import options as opts
+
 
 
 
@@ -81,6 +83,10 @@ with col8:
 networks = ['mainnet', 'polygon', 'arbitrum']
 if 'network' not in st.session_state:
     st.session_state['network'] = networks[0]
+
+if 'zoom' not in st.session_state:
+    st.session_state["zoom"] = 80
+
 
 ticker = st_autorefresh(interval=REFRESH_INTERVAL_SEC * 1000, key="ticker")
 st.title("balancerV2 Analytics")
@@ -291,11 +297,28 @@ if st.session_state['tab'] == 'Main':
         # mask = (df['Date'] > start_date) & (df['Date'] <= end_date)
         # df = df.loc[mask] # filter the dataframe
 
-        chart = charts.generate_chart_interactive(financial_df, "Total Value Locked (USD)", yaxis='Total Value Locked')
+        tvl1_chart = charts.generate_chart_interactive(financial_df, "Total Value Locked (USD)", yaxis='Total Value Locked')
+        def testfunc():
+            st.session_state["zoom"] = 0
 
+        st.button('test', on_click=(lambda: testfunc()))
+        
+        # tvl1_chart.LINE_CHART.__setattr__("datazoom_xaxis_index", 90)
+        tvl1_chart.LINE_CHART.set_global_opts(
+            title_opts=tvl1_chart.DEFAULT_TITLE_OPTS,
+            legend_opts=tvl1_chart.DEFAULT_LEGEND_OPTS,
+            tooltip_opts=tvl1_chart.DEFAULT_TOOLTIP_OPTS,
+            toolbox_opts=tvl1_chart.DEFAULT_TOOLBOX_OPTS,
+            xaxis_opts=tvl1_chart.DEFAULT_XAXIS_OPTS,
+            yaxis_opts=tvl1_chart.DEFAULT_YAXIS_OPTS,
+            datazoom_opts= [
+            opts.DataZoomOpts(
+                range_start=st.session_state["zoom"], 
+                range_end=100
+            )])
         st_pyecharts(
 
-            chart=chart.LINE_CHART,
+            chart=tvl1_chart.LINE_CHART,
             height="450px",
             key='Total Value Locked',
         )

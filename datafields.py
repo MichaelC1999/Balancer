@@ -12,7 +12,7 @@ from utilities.coingecko import get_coin_market_cap
 def get_financial_snapshots(subgraph, sg):
     financialSnapshot = subgraph.Query.financialsDailySnapshots(
     orderBy=subgraph.FinancialsDailySnapshot.timestamp,
-    orderDirection='desc',
+    orderDirection='asc',
     first=1000
     )
     df = sg.query_df([
@@ -49,6 +49,7 @@ def get_financial_snapshots(subgraph, sg):
     df['HistoricalYield'] = df['Total Value Locked']/df['Daily Total Revenue']
     df["Base Yield"] = df["Daily Supply Revenue"]/df["Total Value Locked"] * 100
     df = df.set_index("id")
+
     print(df)
     return df
 
@@ -64,7 +65,7 @@ def merge_financials_dfs(dfs, sg):
 def get_usage_metrics_df(subgraph, sg, latest_schema=True):
     usageMetrics = subgraph.Query.usageMetricsDailySnapshots(
     orderBy=subgraph.UsageMetricsDailySnapshot.timestamp,
-    orderDirection='desc',
+    orderDirection='asc',
     first=1000
     )
     query_fields = [

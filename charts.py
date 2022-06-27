@@ -4,6 +4,7 @@ import streamlit as st
 from datetime import datetime
 from streamlit_echarts import st_pyecharts
 from pyecharts import options as opts
+import pyecharts
 from CustomCharts import CustomLineChart, CustomBarChart, CustomPieChart
 from utils import *
 from config import *
@@ -13,7 +14,7 @@ nearest = alt.selection(type='single', nearest=True, on='mouseover',
                         fields=['Date'], empty='none')
 
 
-def generate_chart_interactive(df, title, xaxis=None, yaxis="id"):
+def generate_chart_interactive(df, title, xaxis=None, yaxis="id", xaxis_zoom_window_factor):
     chart = CustomLineChart(
         chart_title=title, xaxis_name="Date", yaxis_name="yaxis"
     )
@@ -21,11 +22,13 @@ def generate_chart_interactive(df, title, xaxis=None, yaxis="id"):
         xaxis=df.index
     else:
         xaxis=df[xaxis]
-    print(title + 'gorb' + str(len(xaxis)), xaxis)
-    print(title + 'dorb' + str(xaxis[0]) + str(xaxis[len(xaxis)-1]))
+
     diff = int(xaxis[len(xaxis)-1]) - int(xaxis[0])
     start = 365/diff * 100
-    print(title + str(diff) + str(start) + str(dir(chart.LINE_CHART )))
+
+
+
+    print(title + str(diff) + str(start) + str(dir(chart.LINE_CHART.js_functions )) + str(chart.LINE_CHART.js_functions.items))
 
 
     xaxis_data = format_xaxis(xaxis)
@@ -44,7 +47,7 @@ def generate_chart_interactive(df, title, xaxis=None, yaxis="id"):
         )])
     chart.add_yaxis(
         color="rgb(74,144,226)",
-        series_name="New",
+        series_name=yaxis,
         yaxis_data=df[yaxis].to_list(),
     )
     return chart
