@@ -4,15 +4,17 @@ from pyecharts.types import JsCode
 
 # Get the start and end date denominated in number of days since epoch
 def get_xaxis_zoom_range(xaxis, start, end):
-    xaxis_start = int(xaxis[len(xaxis)-1])
-    xaxis_end = int(xaxis[0])
-    full_xaxis_diff = xaxis_start - xaxis_end
-
+    xaxis_end = int(xaxis[len(xaxis)-1])
+    xaxis_start = int(xaxis[0])
+    full_xaxis_diff = xaxis_end - xaxis_start
     start_slider = ((start - xaxis_start) / full_xaxis_diff) * 100
     end_slider = 100 - ((xaxis_end - end) / full_xaxis_diff) * 100
     
-    window_length_days = end - start
-    start_zoom = window_length_days/diff * 100
+    slider_points = {
+        "start": start_slider,
+        "end": end_slider
+    }
+    return slider_points
 
 
 

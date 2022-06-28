@@ -14,7 +14,7 @@ nearest = alt.selection(type='single', nearest=True, on='mouseover',
                         fields=['Date'], empty='none')
 
 
-def generate_chart_interactive(df, title, xaxis=None, yaxis="id", xaxis_zoom_window_factor):
+def generate_chart_interactive(df, title, xaxis=None, yaxis="id", xaxis_zoom_start=None, xaxis_zoom_end=None, ccy=None):
     chart = CustomLineChart(
         chart_title=title, xaxis_name="Date", yaxis_name="yaxis"
     )
@@ -23,13 +23,17 @@ def generate_chart_interactive(df, title, xaxis=None, yaxis="id", xaxis_zoom_win
     else:
         xaxis=df[xaxis]
 
-    diff = int(xaxis[len(xaxis)-1]) - int(xaxis[0])
-    start = 365/diff * 100
 
+    if xaxis_zoom_end == None:
+        xaxis_zoom_end = int(xaxis[len(xaxis)-1])
+    if xaxis_zoom_start == None:
+        xaxis_zoom_start = int(xaxis[0])
 
+    slider_points = get_xaxis_zoom_range(xaxis, xaxis_zoom_start, xaxis_zoom_end)
+    # if ccy == "USD":
 
-    print(title + str(diff) + str(start) + str(dir(chart.LINE_CHART.js_functions )) + str(chart.LINE_CHART.js_functions.items))
-
+    if ccy == 'ETH' and "prices" in df:
+        df[yaxis] = df[yaxis].apply(lambda x: float(x))/df["prices"]
 
     xaxis_data = format_xaxis(xaxis)
     chart.add_xaxis(xaxis_data)
@@ -42,29 +46,16 @@ def generate_chart_interactive(df, title, xaxis=None, yaxis="id", xaxis_zoom_win
         yaxis_opts=chart.DEFAULT_YAXIS_OPTS,
         datazoom_opts= [
         opts.DataZoomOpts(
-            range_start=(100-start), 
-            range_end=100
+            range_start=slider_points["start"], 
+            range_end=slider_points["end"]
         )])
     chart.add_yaxis(
         color="rgb(74,144,226)",
         series_name=yaxis,
         yaxis_data=df[yaxis].to_list(),
     )
+    print(df[yaxis])
     return chart
-
-def build_financial_chart(df, column, title=None, y_axis_format='$,.2f',color=None):
-    # st.markdown(df.columns.tolist())
-    title = column if not title else title
-    y_axis = alt.Y(column+":Q", axis=alt.Axis(format=y_axis_format)) if y_axis_format else alt.Y(column+":Q")
-    line = alt.Chart(df).mark_line().encode(x=date_axis, y=y_axis, tooltip=[alt.Tooltip("Date")])
-    if color:
-        line = alt.Chart(df).mark_line().encode(x=date_axis, y=y_axis, tooltip=[alt.Tooltip("Date")],color=color)
-    selectors = alt.Chart(df).mark_point().encode(x=date_axis, opacity=alt.value(0),).add_selection(nearest)
-    points = line.mark_point().encode(opacity=alt.condition(nearest, alt.value(1), alt.value(0)))
-    text = line.mark_text(align='left', dx=5, dy=-5, color='black').encode(text=alt.condition(nearest, column+":Q", alt.value(' ')))
-    rules = alt.Chart(df).mark_rule(color='gray').encode(x=date_axis,).transform_filter(nearest)
-    line_chart = alt.layer(line, selectors, points, rules, text).interactive().properties(title=title)
-    return line_chart
 
 
 def build_pie_chart(df, theta, color):

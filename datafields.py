@@ -4,9 +4,11 @@ import subgrounds.subgraph
 from datetime import datetime
 import pandas as pd
 import streamlit as st
-from utilities.coingecko import get_coin_market_cap
-
-
+from utilities.coingecko import get_coin_market_cap, get_coin_market_chart
+ETH_HISTORY = get_coin_market_chart('ethereum')
+ETH_HISTORY_DF = pd.DataFrame(ETH_HISTORY['prices'], columns=['timestamp', 'prices'])[:-1]
+ETH_HISTORY_DF['Days'] = (ETH_HISTORY_DF['timestamp']/86400000).astype(int)
+ETH_HISTORY_DF=ETH_HISTORY_DF.set_index('Days')
 # Initialize Subgrounds
 @st.cache(hash_funcs={subgrounds.subgraph.object.Object: lambda _: None})
 def get_financial_snapshots(subgraph, sg):
@@ -44,11 +46,14 @@ def get_financial_snapshots(subgraph, sg):
         'financialsDailySnapshots_timestamp':'timestamp'
         })
     df['id'] = df['financialsDailySnapshots_id']
+    df['Days'] = df['financialsDailySnapshots_id'].astype(int)
     df["Daily veBAL Holder Revenue"] = df["Daily Protocol Revenue"] * .75
     df["Cumulative veBAL Holder Revenue"] = df['Cumulative Protocol Side Revenue USD'] * .75
     df['HistoricalYield'] = df['Total Value Locked']/df['Daily Total Revenue']
     df["Base Yield"] = df["Daily Supply Revenue"]/df["Total Value Locked"] * 100
+    df = df.join(ETH_HISTORY_DF['prices'], on="Days")
     df = df.set_index("id")
+    print(ETH_HISTORY_DF, df.index, df)
 
     print(df)
     return df
@@ -56,6 +61,7 @@ def get_financial_snapshots(subgraph, sg):
 def merge_financials_dfs(dfs, sg):
     df_return = pd.concat(dfs, join='outer', axis=0).fillna(0)
     df_return = df_return.groupby('id').sum().round(2)
+    df_return['prices'] = dfs[0]["prices"]
     df_return["Date"] = dfs[0]["Date"]
     df_return["timestamp"] = dfs[0]["timestamp"]
 
@@ -91,7 +97,9 @@ def get_usage_metrics_df(subgraph, sg, latest_schema=True):
         'usageMetricsDailySnapshots_totalPoolCount': 'Total Pool Count',
         'usageMetricsDailySnapshots_timestamp':'timestamp'
         })
+    df['Days'] = df['usageMetricsDailySnapshots_id'].astype(int)
     
+    df = df.join(ETH_HISTORY_DF['prices'], on="Days")
 
     df['id'] = df['usageMetricsDailySnapshots_id']
     df = df.set_index("id")
@@ -102,7 +110,8 @@ def merge_usage_dfs(dfs, sg):
     df_return = df_return.groupby('id').sum().round(2)
     df_return["Date"] = dfs[0]["Date"]
     df_return["timestamp"] = dfs[0]["timestamp"]
-
+    df_return['prices'] = dfs[0]["prices"]
+    print(df_return)
     return df_return
 
 @st.cache(hash_funcs={subgrounds.subgraph.object.Object: lambda _: None})
@@ -320,6 +329,8 @@ def get_veBAL_locked_df(veBAL_subgraph, sg):
     ])
     df['Date'] = df['votingEscrowLocks_unlockTime'].apply(lambda x: datetime.utcfromtimestamp(int(x)))
     df['timestamp'] = df['votingEscrowLocks_unlockTime']
+    df['Days'] = df['timestamp']/86400
+    df = df.join(ETH_HISTORY_DF['prices'], on="Days")
 
     df = df.rename(columns={
         'votingEscrowLocks_lockedBalance':'Locked Balance'
@@ -371,7 +382,11 @@ def get_pool_timeseries_df(subgraph, sg, pool):
         'liquidityPoolDailySnapshots_timestamp':'timestamp'
         })
     df['Date'] = df['timestamp'].apply(lambda x: datetime.utcfromtimestamp(int(x)))
+    df['Days'] = df['timestamp'].apply(lambda x: int(x)/86400000)
+
     df["Base Yield"] = df["Daily Supply Revenue"]/df["Total Value Locked"] * 100
+    df = df.join(ETH_HISTORY_DF['prices'], on="Days")
+    
     df = df.set_index("id")
     print(df)
     return df
