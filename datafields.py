@@ -131,20 +131,22 @@ def get_pools_df(subgraph, sg, chain="mainnet"):
     liquidityPools_df['pool_label'] = liquidityPools_df['Pool'] + ' - ' + liquidityPools_df['id'] + ' - ' + chain
     return liquidityPools_df
 
-def get_top_10_liquidityPools_revenue(subgraph, sg):
+def get_top_x_liquidityPools(subgraph, sg, field, limit):
+    # Field is the sort category, limit is the count of instances to return
     liquidityPools = subgraph.Query.liquidityPools(
-        first=1000,
-        orderBy=subgraph.LiquidityPool.cumulativeTotalRevenueUSD,
+        first=limit,
+        orderBy=subgraph.LiquidityPool.__getattribute__(field),
         orderDirection='desc',
         where=[subgraph.LiquidityPool.id != '0x0000000000000000000000000000000000000000']
     )
     liquidityPools_df = sg.query_df([
         liquidityPools.id,
         liquidityPools.name,
-        liquidityPools.cumulativeTotalRevenueUSD
+        liquidityPools.__getattribute__(field)
     ])
-    liquidityPools_df = liquidityPools_df.rename(columns={'liquidityPools_cumulativeTotalRevenueUSD':'Revenues', 'liquidityPools_name':'Pool', 'liquidityPools_id': 'id'})
+    liquidityPools_df = liquidityPools_df.rename(columns={'liquidityPools_' + field: field, 'liquidityPools_name':'Pool', 'liquidityPools_id': 'id'})
     liquidityPools_df['pool_label'] = liquidityPools_df['Pool'] + ' - ' + liquidityPools_df['id']
+    print(liquidityPools_df)
     return liquidityPools_df
 
 def merge_dfs(dfs, sg, sort_col):
@@ -152,11 +154,12 @@ def merge_dfs(dfs, sg, sort_col):
     df_return.sort_values(sort_col)
     return df_return
 
-def get_swaps_df(subgraph,sg,sort_value):
+def get_swaps_df(subgraph,sg,sort_value,window_start=0):
     event = subgraph.Query.swaps(
         orderBy=subgraph.Swap.__getattribute__(sort_value),
         orderDirection='desc',
-        first=1000
+        first=1000,
+        where=[subgraph.Swap.timestamp > window_start]
     )
     df = sg.query_df([
         event.timestamp,
@@ -177,42 +180,10 @@ def get_swaps_df(subgraph,sg,sort_value):
         'swaps_pool_name':'Pool',
         'swaps_amountInUSD':'Amount In',
         'swaps_amountOutUSD':'Amount Out',
-        'swaps_timestamp':'Timestamp'
+        'swaps_timestamp':'timestamp'
     })
     df['Amount In'] = df['Amount In']
     df['Amount Out'] = df['Amount Out']
-    return df
-
-def get_14d_swaps_df(subgraph,sg):
-    now = int(datetime.timestamp(datetime.now()))
-    within14dTimestamp = now - (86400 * 14)
-    event = subgraph.Query.swaps(
-        orderBy=subgraph.Swap.amountInUSD,
-        orderDirection='desc',
-        where=[subgraph.Swap.timestamp > within14dTimestamp],
-        first=1000
-    )
-    df = sg.query_df([
-        event.timestamp,
-        event.hash,
-        event.__getattribute__('from'),
-        event.to,
-        event.pool.name,
-        event.amountInUSD,
-        event.amountOutUSD
-    ])
-    df['Date'] = df['swaps_timestamp'].apply(lambda x: datetime.utcfromtimestamp(int(x)))
-    df = df.rename(columns={
-        'swaps_hash':'Transaction Hash',
-        'swaps_from':'From',
-        'swaps_to':'To',
-        'swaps_pool_name':'Pool',
-        'swaps_amountInUSD':'Amount In',
-        'swaps_amountOutUSD':'Amount Out'
-
-    })
-    df['Amount In'] = df['Amount In'].apply(lambda x: "${:.1f}k".format((x/1000)))
-    df['Amount Out'] = df['Amount Out'].apply(lambda x: "${:.1f}k".format((x/1000)))
     return df
 
 def get_30d_withdraws(subgraph, sg):
@@ -310,6 +281,8 @@ def get_veBAL_unlocks_df(veBAL_subgraph, sg):
     ])
     df['Date'] = df['votingEscrowLocks_unlockTime'].apply(lambda x: datetime.utcfromtimestamp(int(x)))
     df['timestamp'] = df['votingEscrowLocks_unlockTime']
+    df['Days'] = df['timestamp']/86400
+
     df = df.rename(columns={
         'votingEscrowLocks_lockedBalance':'Amount To Unlock'
         })
@@ -382,12 +355,13 @@ def get_pool_timeseries_df(subgraph, sg, pool):
         'liquidityPoolDailySnapshots_timestamp':'timestamp'
         })
     df['Date'] = df['timestamp'].apply(lambda x: datetime.utcfromtimestamp(int(x)))
-    df['Days'] = df['timestamp'].apply(lambda x: int(x)/86400000)
+    df['Days'] = df['timestamp'].apply(lambda x: int(int(x)/86400))
+    df = df.set_index("Days")
 
     df["Base Yield"] = df["Daily Supply Revenue"]/df["Total Value Locked"] * 100
+    # df = df.merge(ETH_HISTORY_DF,  on='Days',suffixes=('','_y'))
     df = df.join(ETH_HISTORY_DF['prices'], on="Days")
-    
     df = df.set_index("id")
-    print(df)
+
     return df
 

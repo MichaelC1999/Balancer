@@ -14,9 +14,9 @@ nearest = alt.selection(type='single', nearest=True, on='mouseover',
                         fields=['Date'], empty='none')
 
 
-def generate_chart_interactive(df, title, xaxis=None, yaxis="id", xaxis_zoom_start=None, xaxis_zoom_end=None, ccy=None):
+def generate_line_chart_interactive(df, title, xaxis=None, yaxis="id", xaxis_zoom_start=None, xaxis_zoom_end=None, ccy=None):
     chart = CustomLineChart(
-        chart_title=title, xaxis_name="Date", yaxis_name="yaxis"
+        chart_title=title, xaxis_name="Date", yaxis_name=yaxis
     )
     if xaxis is None:
         xaxis=df.index
@@ -57,6 +57,161 @@ def generate_chart_interactive(df, title, xaxis=None, yaxis="id", xaxis_zoom_sta
     print(df[yaxis])
     return chart
 
+def generate_bar_chart_interactive(df, title, xaxis=None, yaxis="id", xaxis_zoom_start=None, xaxis_zoom_end=None, ccy=None):
+    chart = CustomBarChart(
+        chart_title=title, xaxis_name="Date", yaxis_name=yaxis
+    )
+    if xaxis is None:
+        xaxis=df.index
+    else:
+        xaxis=df[xaxis]
+
+
+    if xaxis_zoom_end == None:
+        xaxis_zoom_end = int(xaxis[len(xaxis)-1])
+    if xaxis_zoom_start == None:
+        xaxis_zoom_start = int(xaxis[0])
+
+    slider_points = get_xaxis_zoom_range(xaxis, xaxis_zoom_start, xaxis_zoom_end)
+    # if ccy == "USD":
+
+    if ccy == 'ETH' and "prices" in df:
+        df[yaxis] = df[yaxis].apply(lambda x: float(x))/df["prices"]
+
+    xaxis_data = format_xaxis(xaxis)
+    chart.add_xaxis_bar_chart(xaxis_data)
+    chart.BAR_CHART.set_global_opts(
+        title_opts=chart.DEFAULT_TITLE_OPTS,
+        legend_opts=chart.DEFAULT_LEGEND_OPTS,
+        tooltip_opts=chart.DEFAULT_TOOLTIP_OPTS,
+        toolbox_opts=chart.DEFAULT_TOOLBOX_OPTS,
+        xaxis_opts=chart.DEFAULT_XAXIS_OPTS,
+        yaxis_opts=chart.DEFAULT_YAXIS_OPTS,
+        datazoom_opts= [
+        opts.DataZoomOpts(
+            range_start=slider_points["start"], 
+            range_end=slider_points["end"]
+        )])
+    chart.add_yaxis_bar_chart(
+        color="rgb(74,144,226)",
+        series_name=yaxis,
+        yaxis_data=df[yaxis].to_list(),
+    )
+    print(df[yaxis])
+    return chart
+
+
+def generate_combo_chart_interactive(df, title, yaxis_bar, yaxis_line, xaxis=None, xaxis_zoom_start=None, xaxis_zoom_end=None, ccy=None):
+    chart = CustomBarChart(
+        chart_title=title,
+        xaxis_name="Date",
+        yaxis_name=title,
+    )
+    if xaxis is None:
+        xaxis=df.index
+    else:
+        xaxis=df[xaxis]
+
+    xaxis_data = format_xaxis(xaxis)
+
+    chart.add_xaxis_bar_chart(xaxis_data=xaxis_data)
+    chart.add_xaxis_line_chart(xaxis_data=xaxis_data)
+    
+    if ccy == 'ETH' and "prices" in df:
+        df[yaxis_bar] = df[yaxis_bar].apply(lambda x: float(x))/df["prices"]
+        df[yaxis_line] = df[yaxis_line].apply(lambda x: float(x))/df["prices"]
+    
+    
+    chart.add_yaxis_bar_chart(
+        series_name=yaxis_bar,
+        color="#5a66f9",
+        yaxis_data=df[yaxis_bar].to_list(),
+    )
+
+    chart.extend_axis(name=title)
+
+    chart.add_yaxis_line_chart(
+        series_name=yaxis_line,
+        color="#fc03f8",
+        yaxis_data=df[yaxis_line].to_list(),
+    )
+
+    if xaxis_zoom_end == None:
+        xaxis_zoom_end = int(xaxis[len(xaxis)-1])
+    if xaxis_zoom_start == None:
+        xaxis_zoom_start = int(xaxis[0])
+
+    slider_points = get_xaxis_zoom_range(xaxis, xaxis_zoom_start, xaxis_zoom_end)
+    # if ccy == "USD":
+
+    chart.BAR_CHART.set_global_opts(
+        title_opts=chart.DEFAULT_TITLE_OPTS,
+        legend_opts=chart.DEFAULT_LEGEND_OPTS,
+        tooltip_opts=chart.DEFAULT_TOOLTIP_OPTS,
+        toolbox_opts=chart.DEFAULT_TOOLBOX_OPTS,
+        xaxis_opts=chart.DEFAULT_XAXIS_OPTS,
+        yaxis_opts=chart.DEFAULT_YAXIS_OPTS,
+        datazoom_opts= [
+        opts.DataZoomOpts(
+            range_start=slider_points["start"], 
+            range_end=slider_points["end"]
+        )])
+
+    return chart
+
+def generate_line_chart_interactive_multiline(df, title, yaxis, xaxis=None, xaxis_zoom_start=None, xaxis_zoom_end=None, ccy=None):
+    
+    if len(yaxis) == 1:
+        return generate_line_chart_interactive(df, title, xaxis, yaxis, xaxis_zoom_start, xaxis_zoom_end, ccy)
+    
+    chart = CustomLineChart(
+        chart_title=title, xaxis_name="Date", yaxis_name="yaxis"
+    )
+    if xaxis is None:
+        xaxis=df.index
+    else:
+        xaxis=df[xaxis]
+
+
+    if xaxis_zoom_end == None:
+        xaxis_zoom_end = int(xaxis[len(xaxis)-1])
+    if xaxis_zoom_start == None:
+        xaxis_zoom_start = int(xaxis[0])
+
+    slider_points = get_xaxis_zoom_range(xaxis, xaxis_zoom_start, xaxis_zoom_end)
+    # if ccy == "USD":
+
+
+
+    xaxis_data = format_xaxis(xaxis)
+    chart.add_xaxis(xaxis_data)
+    chart.LINE_CHART.set_global_opts(
+        title_opts=chart.DEFAULT_TITLE_OPTS,
+        legend_opts=chart.DEFAULT_LEGEND_OPTS,
+        tooltip_opts=chart.DEFAULT_TOOLTIP_OPTS,
+        toolbox_opts=chart.DEFAULT_TOOLBOX_OPTS,
+        xaxis_opts=chart.DEFAULT_XAXIS_OPTS,
+        yaxis_opts=chart.DEFAULT_YAXIS_OPTS,
+        datazoom_opts= [
+        opts.DataZoomOpts(
+            range_start=slider_points["start"], 
+            range_end=slider_points["end"]
+        )])
+
+    for line in yaxis:
+        if line not in df:
+            continue
+        if ccy == 'ETH' and "prices" in df:
+            df[line] = df[line].apply(lambda x: float(x))/df["prices"]
+        chart.add_yaxis(
+            color="rgb(74,144,226)",
+            series_name=line,
+            yaxis_data=df[line].to_list(),
+        )
+    return chart
+
+
+
 
 def build_pie_chart(df, theta, color):
     base = alt.Chart(df).encode(
@@ -69,32 +224,3 @@ def build_pie_chart(df, theta, color):
     text = base.mark_text(radius=130, size=8).encode(text=color)
     return pie + text
 
-def build_tvl_per_asset_pie(assets_df):
-    selection = alt.selection_multi(fields=['Token'], bind='legend')
-    pie_chart = alt.Chart(assets_df).mark_arc().encode(
-        theta=alt.Theta(field="Total Value Locked", type="quantitative"),
-        tooltip=[alt.Tooltip("Total Value Locked"), alt.Tooltip("Token")],
-        color=alt.condition(selection, 'Token:N', alt.value('white'))
-    ).add_selection(selection).configure_legend(
-        titleFontSize=14,
-        labelFontSize=10,
-        columns=2
-    )
-    return pie_chart
-
-
-def build_multi_line_rev_chart(revenue_df):
-    sub_df = revenue_df[['Date','Daily Protocol Revenue','Daily Supply Revenue','timestamp']]
-    sub_df = sub_df.rename(columns={'Daily Protocol Revenue': 'Protocol', 'Daily Supply Revenue': 'Supply'})
-    formatted_df = sub_df.melt(id_vars=['timestamp'], var_name='Side', value_name='Revenue')
-    formatted_df['timestamp'] = formatted_df['timestamp']/86400
-    chart = generate_chart_interactive(formatted_df, 'Revenue',xaxis='timestamp', yaxis='Revenue')
-    return chart
-
-def build_multi_line_veBAL_chart(df):
-    sub_df = df[['Date','Daily veBAL Holder Revenue','Cumulative veBAL Holder Revenue','timestamp']]
-    sub_df = sub_df.rename(columns={'Daily veBAL Holder Revenue': 'Daily', 'Cumulative veBAL Holder Revenue': 'Cumulative'})
-    formatted_df = sub_df.melt(id_vars=['timestamp'], var_name='Side', value_name='Revenue')
-    formatted_df['timestamp'] = formatted_df['timestamp']/86400
-    chart = generate_chart_interactive(formatted_df, 'Revenue',xaxis='timestamp', yaxis='Revenue')
-    return chart

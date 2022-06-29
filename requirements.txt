@@ -3,4 +3,5 @@ streamlit
 streamlit-autorefresh
 black
 altair
+pyecharts
 web3

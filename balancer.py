@@ -318,7 +318,7 @@ if st.session_state['tab'] == 'Main':
         
         buttons_chart(key, state_val)
         buttons_ccy(key, state_val)
-        tvl1_chart = charts.generate_chart_interactive(financial_df, "Total Value Locked (USD)", yaxis=key, xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
+        tvl1_chart = charts.generate_line_chart_interactive(financial_df, "Total Value Locked (USD)", yaxis=key, xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
 
         st_pyecharts(
             chart=tvl1_chart.LINE_CHART,
@@ -339,7 +339,7 @@ if st.session_state['tab'] == 'Main':
         buttons_chart(key, state_val)
         buttons_ccy(key, state_val)
 
-        chart = charts.generate_chart_interactive(financial_df, "Daily Volume (USD)", yaxis=key, xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
+        chart = charts.generate_line_chart_interactive(financial_df, "Daily Volume (USD)", yaxis=key, xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
 
         st_pyecharts(
             chart=chart.LINE_CHART,
@@ -358,7 +358,7 @@ if st.session_state['tab'] == 'Main':
         
         buttons_chart(key, state_val)
 
-        chart = charts.generate_chart_interactive(usage_df, key, yaxis= key, xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
+        chart = charts.generate_line_chart_interactive(usage_df, key, yaxis= key, xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
 
         st_pyecharts(
             chart=chart.LINE_CHART,
@@ -379,7 +379,7 @@ if st.session_state['tab'] == 'Main':
         
         buttons_chart(key, state_val)
                 
-        chart = charts.generate_chart_interactive(usage_df, key, yaxis=key, xaxis_zoom_start=state_val["window_start"], xaxis_zoom_end=state_val["window_end"], ccy=state_val["ccy"])
+        chart = charts.generate_line_chart_interactive(usage_df, key, yaxis=key, xaxis_zoom_start=state_val["window_start"], xaxis_zoom_end=state_val["window_end"], ccy=state_val["ccy"])
 
         st_pyecharts(
             chart=chart.LINE_CHART,
@@ -398,7 +398,7 @@ if st.session_state['tab'] == 'Main':
         buttons_chart(key, state_val)
         buttons_ccy(key, state_val)
                 
-        chart = charts.generate_chart_interactive(financial_df, key, yaxis=key, xaxis_zoom_start=state_val["window_start"], xaxis_zoom_end=state_val["window_end"], ccy=state_val["ccy"])
+        chart = charts.generate_line_chart_interactive(financial_df, key, yaxis=key, xaxis_zoom_start=state_val["window_start"], xaxis_zoom_end=state_val["window_end"], ccy=state_val["ccy"])
         st_pyecharts(
             chart=chart.LINE_CHART,
             height="450px",
@@ -416,7 +416,7 @@ if st.session_state['tab'] == 'Main':
         buttons_chart(key, state_val)
         buttons_ccy(key, state_val)
                 
-        chart = charts.generate_chart_interactive(financial_df, key, yaxis="Protocol Controlled Value USD", xaxis_zoom_start=state_val["window_start"], xaxis_zoom_end=state_val["window_end"], ccy=state_val["ccy"])
+        chart = charts.generate_line_chart_interactive(financial_df, key, yaxis="Protocol Controlled Value USD", xaxis_zoom_start=state_val["window_start"], xaxis_zoom_end=state_val["window_end"], ccy=state_val["ccy"])
         st_pyecharts(
             chart=chart.LINE_CHART,
             height="450px",
@@ -436,24 +436,46 @@ if st.session_state['tab'] == 'Main':
         
         buttons_chart(key, state_val)
                 
-        chart = charts.generate_chart_interactive(veBAL_locked_df, key, xaxis='Days', yaxis=key, xaxis_zoom_start=state_val["window_start"], xaxis_zoom_end=state_val["window_end"], ccy=state_val["ccy"])
+        chart = charts.generate_line_chart_interactive(veBAL_locked_df, key, xaxis='Days', yaxis=key, xaxis_zoom_start=state_val["window_start"], xaxis_zoom_end=state_val["window_end"], ccy=state_val["ccy"])
         st_pyecharts(
             chart=chart.LINE_CHART,
             height="450px",
             key= key,
         )
     with col2:
-
-        daily_veBAL_revenues = charts.build_multi_line_veBAL_chart(financial_df)
+        key = "veBAL revenues"
+        if key not in st.session_state['chart_states']:
+            xaxis_end = int(financial_df.index[len(financial_df.index)-1])
+            xaxis_start = xaxis_end - 365
+            st.session_state['chart_states'][key] = {"window_start": xaxis_start, "window_end": xaxis_end, "ccy": "USD"}
+        
+        state_val = st.session_state['chart_states'][key]
+        buttons_chart(key, state_val)
+        daily_veBAL_revenues = charts.generate_combo_chart_interactive(financial_df, "veBAL Holder Revenues", 'Daily veBAL Holder Revenue', 'Cumulative veBAL Holder Revenue', xaxis_zoom_start=state_val["window_start"], xaxis_zoom_end=state_val["window_end"])
         st_pyecharts(
-            chart=daily_veBAL_revenues.LINE_CHART,
+            chart=daily_veBAL_revenues.BAR_CHART.overlap(daily_veBAL_revenues.LINE_CHART),
             height="450px",
-            key= "Revenue",
+            key= key,
         )
 
     with col3:
         # veBAL_unlocks =  charts.build_bar_chart(veBAL_unlocks_df, "Amount To Unlock")
-        st.bar_chart(veBAL_unlocks_df[["Amount To Unlock", "Date"]].set_index("Date"), use_container_width=False)
+        key = "Future unlocks"
+        if key not in st.session_state['chart_states']:
+            xaxis_end = int(financial_df.index[len(financial_df.index)-1])
+            xaxis_start = xaxis_end - 365
+            st.session_state['chart_states'][key] = {"window_start": xaxis_start, "window_end": xaxis_end, "ccy": "USD"}
+        
+        state_val = st.session_state['chart_states'][key]
+        
+        buttons_chart(key, state_val)
+                
+        chart = charts.generate_bar_chart_interactive(veBAL_unlocks_df, key, yaxis="Amount To Unlock", xaxis='Days', xaxis_zoom_start=state_val["window_start"], xaxis_zoom_end=state_val["window_end"], ccy=state_val["ccy"])
+        st_pyecharts(
+            chart=chart.BAR_CHART,
+            height="450px",
+            key= key,
+        )
 
     col1, col2, col3 = st.columns(3)
 
@@ -469,7 +491,7 @@ if st.session_state['tab'] == 'Main':
         
         buttons_chart(key, state_val)
 
-        chart = charts.generate_chart_interactive(mainnet_financial_df, key, yaxis="Base Yield", xaxis_zoom_start=state_val["window_start"], xaxis_zoom_end=state_val["window_end"], ccy=state_val["ccy"])
+        chart = charts.generate_line_chart_interactive(mainnet_financial_df, key, yaxis="Base Yield", xaxis_zoom_start=state_val["window_start"], xaxis_zoom_end=state_val["window_end"], ccy=state_val["ccy"])
         st_pyecharts(
             chart=chart.LINE_CHART,
             height="450px",
@@ -477,7 +499,7 @@ if st.session_state['tab'] == 'Main':
         )
     with col2:
         st.markdown('TEMP')
-        # base_yield = chart = charts.generate_chart_interactive(matic_financial_df, "Base Yield", "Matic LP Yield", ccy=state_val["ccy"])
+        # base_yield = chart = charts.generate_line_chart_interactive(matic_financial_df, "Base Yield", "Matic LP Yield", ccy=state_val["ccy"])
         # st.altair_chart(base_yield, use_container_width=True)
 
     with col3:
@@ -492,7 +514,7 @@ if st.session_state['tab'] == 'Main':
         buttons_chart(key, state_val)
 
                         
-        chart = charts.generate_chart_interactive(arbitrum_financial_df, key, yaxis="Base Yield", xaxis_zoom_start=state_val["window_start"], xaxis_zoom_end=state_val["window_end"], ccy=state_val["ccy"])
+        chart = charts.generate_line_chart_interactive(arbitrum_financial_df, key, yaxis="Base Yield", xaxis_zoom_start=state_val["window_start"], xaxis_zoom_end=state_val["window_end"], ccy=state_val["ccy"])
         st_pyecharts(
             chart=chart.LINE_CHART,
             height="450px",
@@ -528,11 +550,17 @@ elif st.session_state['tab'] == 'Liquidity Providers':
 
         liquidityPools_df = datafields.merge_dfs([mainnet_liquidityPools_df, arbitrum_liquidityPools_df], sg, 'Total Value Locked') 
         top_10 = liquidityPools_df.iloc[:10]
-        mainnet_top_10_rev = datafields.get_top_10_liquidityPools_revenue(balancerV2_mainnet, sg)
-        # matic_top_10_rev = datafields.get_top_10_liquidityPools_revenue(balancerV2_matic, sg)
-        arbitrum_top_10_rev = datafields.get_top_10_liquidityPools_revenue(balancerV2_arbitrum, sg)
+        mainnet_top_10_rev = datafields.get_top_x_liquidityPools(balancerV2_mainnet, sg, 'cumulativeTotalRevenueUSD', 10)
+        # matic_top_10_rev = datafields.get_top_x_liquidityPools(balancerV2_matic, sg, 'cumulativeTotalRevenueUSD', 10)
+        arbitrum_top_10_rev = datafields.get_top_x_liquidityPools(balancerV2_arbitrum, sg, 'cumulativeTotalRevenueUSD', 10)
 
-        top_10_rev = datafields.merge_dfs([mainnet_top_10_rev, arbitrum_top_10_rev], sg, 'Revenues')
+        top_10_rev = datafields.merge_dfs([mainnet_top_10_rev, arbitrum_top_10_rev], sg, 'cumulativeTotalRevenueUSD')
+
+        mainnet_top_10_vol = datafields.get_top_x_liquidityPools(balancerV2_mainnet, sg, 'cumulativeVolumeUSD', 10)
+        # matic_top_10_vol = datafields.get_top_x_liquidityPools(balancerV2_matic, sg, 'cumulativeVolumeUSD', 10)
+        arbitrum_top_10_vol = datafields.get_top_x_liquidityPools(balancerV2_arbitrum, sg, 'cumulativeVolumeUSD', 10)
+
+        top_10_vol = datafields.merge_dfs([mainnet_top_10_vol, arbitrum_top_10_vol], sg, 'cumulativeVolumeUSD')
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -551,7 +579,7 @@ elif st.session_state['tab'] == 'Liquidity Providers':
 
     with col1:
         st.subheader("Number of LPs")
-        # LP_count = charts.generate_chart_interactive(usage_df, "Total Pool Count", ccy=state_val["ccy"])
+        # LP_count = charts.generate_line_chart_interactive(usage_df, "Total Pool Count", ccy=state_val["ccy"])
         # st.altair_chart(LP_count, use_container_width=True)
 
     with col2:
@@ -566,7 +594,7 @@ elif st.session_state['tab'] == 'Liquidity Providers':
         buttons_chart(key, state_val)
 
                         
-        historical_yield = charts.generate_chart_interactive(financial_df, key,yaxis="HistoricalYield", xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
+        historical_yield = charts.generate_line_chart_interactive(financial_df, key,yaxis="HistoricalYield", xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
         st_pyecharts(
             chart=historical_yield.LINE_CHART,
             height="450px",
@@ -592,12 +620,16 @@ elif st.session_state['tab'] == 'Traders':
     # matic_swaps_df = datafields.get_swaps_df(balancerV2_matic, sg, "amountInUSD")
     arbitrum_swaps_df = datafields.get_swaps_df(balancerV2_arbitrum, sg, "amountInUSD")
     swaps_df = datafields.merge_dfs([mainnet_swaps_df, arbitrum_swaps_df], sg, 'Amount In')
-
-    mainnet_14d_swaps_df = datafields.get_14d_swaps_df(balancerV2_mainnet, sg)
-    # matic_14d_swaps_df = datafields.get_14d_swaps_df(balancerV2_matic, sg)
-    arbitrum_14d_swaps_df = datafields.get_14d_swaps_df(balancerV2_arbitrum, sg)
-    swaps_14d_df = datafields.merge_dfs([mainnet_14d_swaps_df, arbitrum_14d_swaps_df], sg, 'Amount In')
     
+    if 'Largest Trades' not in st.session_state['chart_states']:
+        xaxis_end = int(int(datetime.datetime.timestamp(datetime.datetime.now()))/86400)
+        xaxis_start = xaxis_end - 30
+        st.session_state['chart_states']['Largest Trades'] = {"window_start": xaxis_start, "window_end": xaxis_end, "ccy": "USD"}
+
+    mainnet_largest_swaps_window_df = datafields.get_swaps_df(balancerV2_mainnet, sg, "amountInUSD", window_start=st.session_state['chart_states']['Largest Trades']['window_start']*86400)
+    # matic_largest_swaps_window_df = datafields.get_swaps_df(balancerV2_matic, sg, "amountInUSD", window_start=st.session_state['chart_states']['Largest Trades']['window_start']*86400)
+    arbitrum_largest_swaps_window_df = datafields.get_swaps_df(balancerV2_arbitrum, sg, "amountInUSD", window_start=st.session_state['chart_states']['Largest Trades']['window_start']*86400)
+    largest_df = datafields.merge_dfs([mainnet_largest_swaps_window_df, arbitrum_largest_swaps_window_df], sg, 'Amount In')    
     
     col1, col2, col3 = st.columns(3)
 
@@ -617,9 +649,11 @@ elif st.session_state['tab'] == 'Traders':
         st.subheader("Largest Pools By Volume 30d")
 
     with col2:
-        st.subheader("Largest Trades 30d")
-
-        st.dataframe(swaps_df[['Date', 'Pool', 'Amount In']][:20])
+        key = "Largest Trades"
+        state_val = st.session_state['chart_states'][key]
+        
+        buttons_chart(key, state_val)
+        st.dataframe(largest_df[['Date', 'Pool', 'Amount In', 'Transaction Hash']][:20])
 
     with col3:
         st.subheader("Highest Volume Tokens 30d")
@@ -628,14 +662,24 @@ elif st.session_state['tab'] == 'Traders':
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        tx_df = pd.DataFrame({"Amount In": swaps_df.groupby('Date String')["Amount In"].max(), "Date String": swaps_df.groupby('Date String')["Date String"].first()})
+        key = "Transactions Daily Median/High"
+        tx_df = pd.DataFrame({"Amount In": swaps_df.groupby('Date String')["Amount In"].max(),"Median": swaps_df.groupby('Date String')["Amount In"].median(), "timestamp": swaps_df.groupby('Date String')["timestamp"].first(), "Date String": swaps_df.groupby('Date String')["Date String"].first()})
         tx_df["Date"] = tx_df["Date String"].apply(lambda x: datetime.datetime.strptime(x, "%Y-%m-%d"))
-        date_axis = alt.X("Date:T", axis=alt.Axis(title=None, format="%Y-%m-%d", labelAngle=45, tickCount=20))
-        bar = alt.Chart(tx_df).mark_bar().encode(
-            x=date_axis,
-            y='Amount In'
+        tx_df["Days"] = tx_df["timestamp"].apply(lambda x: x/86400)
+        if key not in st.session_state['chart_states']:
+            xaxis_end = int(tx_df["Days"][len(tx_df["Days"])-1])
+            xaxis_start = xaxis_end - 365
+            st.session_state['chart_states'][key] = {"window_start": xaxis_start, "window_end": xaxis_end, "ccy": "USD"}
+        
+        state_val = st.session_state['chart_states'][key]
+        buttons_chart(key, state_val)
+        # date_axis = alt.X("Date:T", axis=alt.Axis(title=None, format="%Y-%m-%d", labelAngle=45, tickCount=20))
+        tx_by_day_combo = charts.generate_combo_chart_interactive(tx_df, key, 'Amount In', 'Median', xaxis="Days", xaxis_zoom_start=state_val["window_start"], xaxis_zoom_end=state_val["window_end"])
+        st_pyecharts(
+            chart=tx_by_day_combo.BAR_CHART.overlap(tx_by_day_combo.LINE_CHART),
+            height="450px",
+            key= key,
         )
-        st.altair_chart(bar, use_container_width=False)
         
     with col2:
         st.subheader("Tx amounts by size pie chart")
@@ -762,7 +806,7 @@ elif st.session_state['tab'] == 'By Pool':
         
         buttons_chart(key, state_val)
         buttons_ccy(key, state_val)                
-        tvl = charts.generate_chart_interactive(pool_timeseries, key, xaxis='timestamp', yaxis='Total Value Locked', xaxis_zoom_start=state_val["window_start"], xaxis_zoom_end=state_val["window_end"], ccy=state_val["ccy"])
+        tvl = charts.generate_line_chart_interactive(pool_timeseries, key, xaxis='timestamp', yaxis='Total Value Locked', xaxis_zoom_start=state_val["window_start"], xaxis_zoom_end=state_val["window_end"], ccy=state_val["ccy"])
         st_pyecharts(
             chart=tvl.LINE_CHART,
             height="450px",
@@ -779,7 +823,7 @@ elif st.session_state['tab'] == 'By Pool':
         
         buttons_chart(key, state_val)
         buttons_ccy(key, state_val)             
-        vol = charts.generate_chart_interactive(pool_timeseries, key, xaxis='timestamp', yaxis='Daily Volume USD', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
+        vol = charts.generate_line_chart_interactive(pool_timeseries, key, xaxis='timestamp', yaxis='Daily Volume USD', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
         st_pyecharts(
             chart=vol.LINE_CHART,
             height="450px",
@@ -796,7 +840,7 @@ elif st.session_state['tab'] == 'By Pool':
         
         buttons_chart(key, state_val)
         buttons_ccy(key, state_val)
-        vol = charts.generate_chart_interactive(pool_timeseries, key, xaxis='timestamp', yaxis='Daily Supply Revenue', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
+        vol = charts.generate_line_chart_interactive(pool_timeseries, key, xaxis='timestamp', yaxis='Daily Supply Revenue', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
         st_pyecharts(
             chart=vol.LINE_CHART,
             height="450px",
@@ -817,7 +861,7 @@ elif st.session_state['tab'] == 'By Pool':
         state_val = st.session_state['chart_states'][key]
         
         buttons_chart(key, state_val)
-        base_yield_pool = charts.generate_chart_interactive(pool_timeseries, key, xaxis='timestamp', yaxis='Base Yield', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
+        base_yield_pool = charts.generate_line_chart_interactive(pool_timeseries, key, xaxis='timestamp', yaxis='Base Yield', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
         st_pyecharts(
             chart=base_yield_pool.LINE_CHART,
             height="450px",
@@ -834,7 +878,7 @@ elif st.session_state['tab'] == 'By Pool':
         
         buttons_chart(key, state_val)
         buttons_ccy(key, state_val)
-        protocol_rev_from_pool = charts.generate_chart_interactive(pool_timeseries, key, xaxis='timestamp', yaxis='Daily Protocol Revenue', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
+        protocol_rev_from_pool = charts.generate_line_chart_interactive(pool_timeseries, key, xaxis='timestamp', yaxis='Daily Protocol Revenue', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
         st_pyecharts(
             chart=protocol_rev_from_pool.LINE_CHART,
             height="450px",
@@ -889,7 +933,7 @@ elif st.session_state['tab'] == 'By Chain':
         
         buttons_chart(key, state_val)
         buttons_ccy(key, state_val)
-        tvl = charts.generate_chart_interactive(current_financial_df, key, yaxis='Total Value Locked', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
+        tvl = charts.generate_line_chart_interactive(current_financial_df, key, yaxis='Total Value Locked', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
         st_pyecharts(
             chart=tvl.LINE_CHART,
             height="450px",
@@ -906,7 +950,7 @@ elif st.session_state['tab'] == 'By Chain':
         
         buttons_chart(key, state_val)
         buttons_ccy(key, state_val)
-        vol = charts.generate_chart_interactive(current_financial_df, key, yaxis='Daily Volume USD', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
+        vol = charts.generate_line_chart_interactive(current_financial_df, key, yaxis='Daily Volume USD', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
         st_pyecharts(
             chart=vol.LINE_CHART,
             height="450px",
@@ -922,7 +966,7 @@ elif st.session_state['tab'] == 'By Chain':
         state_val = st.session_state['chart_states'][key]
         
         buttons_chart(key, state_val)
-        pools = charts.generate_chart_interactive(current_usage_df, key, yaxis='Total Pool Count', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
+        pools = charts.generate_line_chart_interactive(current_usage_df, key, yaxis='Total Pool Count', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
         st_pyecharts(
             chart=pools.LINE_CHART,
             height="450px",
@@ -944,7 +988,7 @@ elif st.session_state['tab'] == 'By Chain':
         
         buttons_chart(key, state_val)
         buttons_ccy(key, state_val)
-        LP_revenues = charts.generate_chart_interactive(current_financial_df,key, yaxis="Daily Supply Revenue", xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
+        LP_revenues = charts.generate_line_chart_interactive(current_financial_df,key, yaxis="Daily Supply Revenue", xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
         st_pyecharts(
             chart=LP_revenues.LINE_CHART,
             height="450px",
@@ -960,7 +1004,7 @@ elif st.session_state['tab'] == 'By Chain':
         state_val = st.session_state['chart_states'][key]
         
         buttons_chart(key, state_val)
-        LP_yield = charts.generate_chart_interactive(current_financial_df, key, yaxis="Base Yield", xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
+        LP_yield = charts.generate_line_chart_interactive(current_financial_df, key, yaxis="Base Yield", xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
         st_pyecharts(
             chart=LP_yield.LINE_CHART,
             height="450px",
@@ -978,7 +1022,7 @@ elif st.session_state['tab'] == 'By Chain':
         state_val = st.session_state['chart_states'][key]
         
         buttons_chart(key, state_val)
-        daily_swaps_by_chain = charts.generate_chart_interactive(current_usage_df, key, yaxis="Daily Swap Count", xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
+        daily_swaps_by_chain = charts.generate_line_chart_interactive(current_usage_df, key, yaxis="Daily Swap Count", xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
         st_pyecharts(
             chart=daily_swaps_by_chain.LINE_CHART,
             height="450px",
@@ -986,12 +1030,21 @@ elif st.session_state['tab'] == 'By Chain':
         )
 
     with col2:
+        key = 'Protocol Revenue ' + st.session_state['network']
+        if key not in st.session_state['chart_states']:
+            xaxis_end = int(current_financial_df.index[len(current_financial_df.index)-1])
+            xaxis_start = xaxis_end - 365
+            st.session_state['chart_states'][key] = {"window_start": xaxis_start, "window_end": xaxis_end, "ccy": "USD"}
         
-        protocol_rev_by_chain = charts.build_multi_line_rev_chart(datafields.get_revenue_df(current_financial_df, sg))
+        state_val = st.session_state['chart_states'][key]
+        
+        buttons_chart(key, state_val)
+        buttons_ccy(key, state_val)
+        protocol_revenue = charts.generate_line_chart_interactive(current_financial_df,key, yaxis="Daily Protocol Revenue", xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val["ccy"])
         st_pyecharts(
-            chart=protocol_rev_by_chain.LINE_CHART,
+            chart=protocol_revenue.LINE_CHART,
             height="450px",
-            key= "Locked Balance",
+            key=key,
         )
 
     with col3:
@@ -1071,22 +1124,21 @@ else:
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        protocol_rev = charts.build_multi_line_rev_chart(revenue_df)
-        st.altair_chart(protocol_rev, use_container_width=False)
+        st.subheader('placeholder')
 
     with col2:
-        ps_ratio = charts.generate_chart_interactive(revenue_df, 'P/S Ratio', y_axis_format=None, ccy=state_val["ccy"])
+        ps_ratio = charts.generate_line_chart_interactive(revenue_df, 'P/S Ratio', y_axis_format=None, ccy=state_val["ccy"])
         st.altair_chart(ps_ratio, use_container_width=False)
 
     with col3:
-        pe_ratio = charts.generate_chart_interactive(revenue_df, 'P/E Ratio', y_axis_format=None, ccy=state_val["ccy"])
+        pe_ratio = charts.generate_line_chart_interactive(revenue_df, 'P/E Ratio', y_axis_format=None, ccy=state_val["ccy"])
         st.altair_chart(pe_ratio, use_container_width=False)
 
     st.header('Usage Metrics')
 
     with st.container():
-        active = charts.generate_chart_interactive(usage_df, 'Daily Active Users', y_axis_format=None, ccy=state_val["ccy"])
-        new = charts.generate_chart_interactive(usage_df, 'Cumulative New Users', y_axis_format=None, ccy=state_val["ccy"])
+        active = charts.generate_line_chart_interactive(usage_df, 'Daily Active Users', y_axis_format=None, ccy=state_val["ccy"])
+        new = charts.generate_line_chart_interactive(usage_df, 'Cumulative New Users', y_axis_format=None, ccy=state_val["ccy"])
 
         st.altair_chart(active | new, use_container_width=False)
 
