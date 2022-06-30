@@ -37,18 +37,16 @@ def get_financial_snapshots(subgraph, sg):
         'financialsDailySnapshots_dailySupplySideRevenueUSD':'Daily Supply Revenue',
         'financialsDailySnapshots_dailyProtocolSideRevenueUSD':'Daily Protocol Revenue',
         'financialsDailySnapshots_totalValueLockedUSD':'Total Value Locked',
-        'financialsDailySnapshots_protocolControlledValueUSD':'Protocol Controlled Value USD',
-        'financialsDailySnapshots_dailyVolumeUSD':'Daily Volume USD',
-        'financialsDailySnapshots_cumulativeVolumeUSD':'Cumulative Volume USD',
-        'financialsDailySnapshots_cumulativeSupplySideRevenueUSD':'Cumulative Supply Side Revenue USD',
-        'financialsDailySnapshots_cumulativeProtocolSideRevenueUSD':'Cumulative Protocol Side Revenue USD',
-        'financialsDailySnapshots_cumulativeTotalRevenueUSD':'Cumulative Total Revenue USD',
+        'financialsDailySnapshots_protocolControlledValueUSD':'Protocol Controlled Value',
+        'financialsDailySnapshots_dailyVolumeUSD':'Daily Volume',
+        'financialsDailySnapshots_cumulativeSupplySideRevenueUSD':'Cumulative Supply Side Revenue',
+        'financialsDailySnapshots_cumulativeProtocolSideRevenueUSD':'Cumulative Protocol Side Revenue',
         'financialsDailySnapshots_timestamp':'timestamp'
         })
     df['id'] = df['financialsDailySnapshots_id']
     df['Days'] = df['financialsDailySnapshots_id'].astype(int)
     df["Daily veBAL Holder Revenue"] = df["Daily Protocol Revenue"] * .75
-    df["Cumulative veBAL Holder Revenue"] = df['Cumulative Protocol Side Revenue USD'] * .75
+    df["Cumulative veBAL Holder Revenue"] = df['Cumulative Protocol Side Revenue'] * .75
     df['HistoricalYield'] = df['Total Value Locked']/df['Daily Total Revenue']
     df["Base Yield"] = df["Daily Supply Revenue"]/df["Total Value Locked"] * 100
     df = df.join(ETH_HISTORY_DF['prices'], on="Days")
@@ -149,9 +147,50 @@ def get_top_x_liquidityPools(subgraph, sg, field, limit):
     print(liquidityPools_df)
     return liquidityPools_df
 
+def get_recent_24h_pool_snapshots(subgraph, sg):
+    # Because there is no "Days Since Epoch" field on the snapshot and snapshot timestamps can vary on when they start/end, select snapshots with timestamps in a 36 hr window
+    # Snapshots that appear more than once will be filtered out
+    # The time window is specifically over 24 hrs ago because snapshots within the last 24 hrs maybe the current in-progress snapshot and may innacurately reflect the average daily statistic
+    now = int(int(datetime.timestamp(datetime.now())))
+    timestamp_gt_60hrs = now - 60*3600
+    timestamp_lt_24hrs = now - 24*3600
+    liquidityPoolSnapshots = subgraph.Query.liquidityPoolDailySnapshots(
+        orderBy=subgraph.LiquidityPoolDailySnapshot.id,
+        where={"timestamp_gt": timestamp_gt_60hrs, "timestamp_lt": timestamp_lt_24hrs}
+    ) 
+    df = sg.query_df([
+        liquidityPoolSnapshots.id,
+        liquidityPoolSnapshots.pool.id,
+        liquidityPoolSnapshots.pool.name,
+        liquidityPoolSnapshots.timestamp,
+        liquidityPoolSnapshots.totalValueLockedUSD,
+        liquidityPoolSnapshots.dailyVolumeUSD,
+        liquidityPoolSnapshots.dailySupplySideRevenueUSD,
+    ])
+    df = df.rename(columns={
+        'liquidityPoolDailySnapshots_id':'id',
+        'liquidityPoolDailySnapshots_pool_id':'Pool ID',
+        'liquidityPoolDailySnapshots_pool_name':'Pool Name',
+        'liquidityPoolDailySnapshots_dailySupplySideRevenueUSD':'Daily Supply Revenue',
+        'liquidityPoolDailySnapshots_totalValueLockedUSD':'Total Value Locked',
+        'liquidityPoolDailySnapshots_dailyVolumeUSD':'Daily Volume',
+        'liquidityPoolDailySnapshots_timestamp':'timestamp'
+        })
+    df = df.drop_duplicates(subset="Pool ID")
+    df['Date'] = df['timestamp'].apply(lambda x: datetime.utcfromtimestamp(int(x)))
+    df['Days'] = df['timestamp'].apply(lambda x: int(int(x)/86400))
+    df = df.set_index("Days")
+    df['Total Value Locked'] = df['Total Value Locked'].round(2)
+    df['Daily Volume'] = df['Daily Volume'].round(2)
+    df["Base Yield"] = df["Daily Supply Revenue"]/df["Total Value Locked"] * 100
+    df = df.join(ETH_HISTORY_DF['prices'], on="Days")
+    df = df.set_index("id")
+
+    return df
+
 def merge_dfs(dfs, sg, sort_col):
     df_return = pd.concat(dfs, join='outer', axis=0).fillna(0)
-    df_return.sort_values(sort_col)
+    df_return = df_return.sort_values(sort_col, ascending=False)
     return df_return
 
 def get_swaps_df(subgraph,sg,sort_value,window_start=0):
@@ -182,8 +221,11 @@ def get_swaps_df(subgraph,sg,sort_value,window_start=0):
         'swaps_amountOutUSD':'Amount Out',
         'swaps_timestamp':'timestamp'
     })
-    df['Amount In'] = df['Amount In']
-    df['Amount Out'] = df['Amount Out']
+    df['Amount In'] = df['Amount In'].round(2)
+    df['Amount Out'] = df['Amount Out'].round(2)
+
+    df['Days'] = df['timestamp'].apply(lambda x: int(int(x)/86400))
+    df = df.join(ETH_HISTORY_DF['prices'], on="Days")
     return df
 
 def get_30d_withdraws(subgraph, sg):
@@ -206,11 +248,14 @@ def get_30d_withdraws(subgraph, sg):
     ])
     df = df.rename(columns={
         slug+'_hash':'Transaction Hash',
+        slug+'_timestamp':'timestamp',
         slug+'_from':'From',
-        slug+'_to':'To',
+        slug+'_to':'Wallet',
         slug+'_pool_name':'Pool',
         slug+'_amountUSD':'Amount'
     })
+    df['Days'] = df['timestamp'].apply(lambda x: int(int(x)/86400))
+    df = df.join(ETH_HISTORY_DF['prices'], on="Days")
 
     return df
 
@@ -281,7 +326,7 @@ def get_veBAL_unlocks_df(veBAL_subgraph, sg):
     ])
     df['Date'] = df['votingEscrowLocks_unlockTime'].apply(lambda x: datetime.utcfromtimestamp(int(x)))
     df['timestamp'] = df['votingEscrowLocks_unlockTime']
-    df['Days'] = df['timestamp']/86400
+    df['Days'] = df['timestamp'].apply(lambda x: int(int(x)/86400))
 
     df = df.rename(columns={
         'votingEscrowLocks_lockedBalance':'Amount To Unlock'
@@ -302,7 +347,7 @@ def get_veBAL_locked_df(veBAL_subgraph, sg):
     ])
     df['Date'] = df['votingEscrowLocks_unlockTime'].apply(lambda x: datetime.utcfromtimestamp(int(x)))
     df['timestamp'] = df['votingEscrowLocks_unlockTime']
-    df['Days'] = df['timestamp']/86400
+    df['Days'] = df['timestamp'].apply(lambda x: int(int(x)/86400))
     df = df.join(ETH_HISTORY_DF['prices'], on="Days")
 
     df = df.rename(columns={
@@ -351,7 +396,7 @@ def get_pool_timeseries_df(subgraph, sg, pool):
         'liquidityPoolDailySnapshots_dailySupplySideRevenueUSD':'Daily Supply Revenue',
         'liquidityPoolDailySnapshots_dailyProtocolSideRevenueUSD':'Daily Protocol Revenue',
         'liquidityPoolDailySnapshots_totalValueLockedUSD':'Total Value Locked',
-        'liquidityPoolDailySnapshots_dailyVolumeUSD':'Daily Volume USD',
+        'liquidityPoolDailySnapshots_dailyVolumeUSD':'Daily Volume',
         'liquidityPoolDailySnapshots_timestamp':'timestamp'
         })
     df['Date'] = df['timestamp'].apply(lambda x: datetime.utcfromtimestamp(int(x)))
@@ -359,7 +404,6 @@ def get_pool_timeseries_df(subgraph, sg, pool):
     df = df.set_index("Days")
 
     df["Base Yield"] = df["Daily Supply Revenue"]/df["Total Value Locked"] * 100
-    # df = df.merge(ETH_HISTORY_DF,  on='Days',suffixes=('','_y'))
     df = df.join(ETH_HISTORY_DF['prices'], on="Days")
     df = df.set_index("id")
 

@@ -6,7 +6,7 @@ def get_quarterly_values(financial_df, usage_df, quarterWindows, quartersList, Q
     usageStatisticsInQuarter = usage_df.loc[(usage_df['timestamp'] >= quarterWindows[quartersList[index]]["start"]) & (usage_df['timestamp'] <= quarterWindows[quartersList[index]]["end"])]
     QtReports["Swaps"][iterator] = str(usageStatisticsInQuarter["Daily Swap Count"].sum().round(2))
     QtReports["LP Fees"][iterator] = str(financialsInQuarter["Daily Supply Revenue"].sum().round(2))
-    QtReports["Volume"][iterator] = str(financialsInQuarter["Daily Volume USD"].sum().round(2))
+    QtReports["Volume"][iterator] = str(financialsInQuarter["Daily Volume"].sum().round(2))
     QtReports["Liquidity"][iterator] = str(financialsInQuarter["Total Value Locked"].mean().round(2))
     QtReports["Agg. New Pools"][iterator] = str(usageStatisticsInQuarter["Total Pool Count"].sum().round(2))
     QtReports["Protocol Revenue"][iterator] = str(financialsInQuarter["Daily Total Revenue"].sum().round(2))
