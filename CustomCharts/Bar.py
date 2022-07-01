@@ -8,19 +8,21 @@ class CustomBarChart:
     def __init__(
         self,
         chart_title,
-        yaxis_name,
-        xaxis_name,
         height="1000px",
-        xaxis_namegap=20,
-        yaxis_namegap=40,
         logo_position=70
     ):
-        self.LINE_CHART = Line()
+        self.LINE_CHART = Line(
+            init_opts=opts.InitOpts(
+                width="100%", 
+                height=height, 
+                bg_color="rgb(35,58,79)"
+            )
+        )
         self.BAR_CHART = Bar(
             init_opts=opts.InitOpts(
                 height=height, 
                 width="100%", 
-                bg_color="#232329"
+                bg_color="rgb(35,58,79)"
             )
         )
         
@@ -34,19 +36,18 @@ class CustomBarChart:
         
         
         self.DEFAULT_TITLE_OPTS.opts[0]['text'] = chart_title
-        self.DEFAULT_LEGEND_OPTS.update(
-            show=False
-        )
-        self.DEFAULT_XAXIS_OPTS.update(
-            name=xaxis_name,
-            nameGap=xaxis_namegap
-        )
-        self.DEFAULT_YAXIS_OPTS.update(
-            name=yaxis_name,
-            nameGap=yaxis_namegap
-        )
         
         self.BAR_CHART.set_global_opts(
+            title_opts=self.DEFAULT_TITLE_OPTS,
+            legend_opts=self.DEFAULT_LEGEND_OPTS,
+            tooltip_opts=self.DEFAULT_TOOLTIP_OPTS,
+            toolbox_opts=self.DEFAULT_TOOLBOX_OPTS,
+            xaxis_opts=self.DEFAULT_XAXIS_OPTS,
+            yaxis_opts=self.DEFAULT_YAXIS_OPTS,
+            datazoom_opts=self.DEFAULT_DATAZOOM_OPTS
+        )
+
+        self.LINE_CHART.set_global_opts(
             title_opts=self.DEFAULT_TITLE_OPTS,
             legend_opts=self.DEFAULT_LEGEND_OPTS,
             tooltip_opts=self.DEFAULT_TOOLTIP_OPTS,

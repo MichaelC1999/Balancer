@@ -8,11 +8,7 @@ class CustomLineChart:
     def __init__(
         self,
         chart_title,
-        xaxis_name,
-        yaxis_name,
         height="1000px",
-        xaxis_namegap=30,
-        yaxis_namegap=40,
         logo_position=70
     ):
         self.LINE_CHART = Line(
@@ -34,14 +30,6 @@ class CustomLineChart:
         self.DEFAULT_TITLE_OPTS.opts[0]['text'] = chart_title
         self.DEFAULT_LEGEND_OPTS.update(
             show=False
-        )
-        self.DEFAULT_XAXIS_OPTS.update(
-            name=xaxis_name,
-            nameGap=xaxis_namegap
-        )
-        self.DEFAULT_YAXIS_OPTS.update(
-            name=yaxis_name,
-            nameGap=yaxis_namegap
         )
         
         self.LINE_CHART.set_global_opts(

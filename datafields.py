@@ -318,7 +318,8 @@ def get_veBAL_unlocks_df(veBAL_subgraph, sg):
     veBAL_data = veBAL_subgraph.Query.votingEscrowLocks(
         where={"unlockTime_gt": int(datetime.timestamp(now))},
         orderBy='unlockTime',
-        orderDirection='asc'
+        orderDirection='asc',
+        first=1000
     )
     df = sg.query_df([
       veBAL_data.unlockTime,
@@ -329,8 +330,10 @@ def get_veBAL_unlocks_df(veBAL_subgraph, sg):
     df['Days'] = df['timestamp'].apply(lambda x: int(int(x)/86400))
 
     df = df.rename(columns={
-        'votingEscrowLocks_lockedBalance':'Amount To Unlock'
+        'votingEscrowLocks_lockedBalance':'Amount To Unlock',
+        'votingEscrowLocks_unlockTime':'timestamp'
         })
+    df['Amount To Unlock'] = df['Amount To Unlock'].round(2)
     print(df)
     return df
 
@@ -339,20 +342,22 @@ def get_veBAL_locked_df(veBAL_subgraph, sg):
     veBAL_data = veBAL_subgraph.Query.votingEscrowLocks(
         where={"unlockTime_lt": int(datetime.timestamp(now))},
         orderBy='unlockTime',
-        orderDirection='asc'
+        orderDirection='asc',
+        first=1000
     )
     df = sg.query_df([
       veBAL_data.unlockTime,
       veBAL_data.lockedBalance
     ])
     df['Date'] = df['votingEscrowLocks_unlockTime'].apply(lambda x: datetime.utcfromtimestamp(int(x)))
-    df['timestamp'] = df['votingEscrowLocks_unlockTime']
-    df['Days'] = df['timestamp'].apply(lambda x: int(int(x)/86400))
-    df = df.join(ETH_HISTORY_DF['prices'], on="Days")
 
     df = df.rename(columns={
-        'votingEscrowLocks_lockedBalance':'Locked Balance'
+        'votingEscrowLocks_lockedBalance':'Locked Balance',
+        'votingEscrowLocks_unlockTime':'timestamp'
         })
+    df['Days'] = df['timestamp'].apply(lambda x: int(int(x)/86400))
+    df = df.join(ETH_HISTORY_DF['prices'], on="Days")
+    df['Locked Balance'] = df['Locked Balance'].round(2)
     print(df)
     return df
 

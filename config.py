@@ -13,7 +13,7 @@ SUBGRAPH_API_URL = {
 DEFAULT_TITLE_OPTS = opts.TitleOpts(
     padding=10,
     item_gap=0,
-    pos_left="10",
+    pos_left="24",
     pos_right="0",
     pos_top="10",
     pos_bottom="0",
@@ -25,9 +25,11 @@ DEFAULT_TITLE_OPTS = opts.TitleOpts(
 DEFAULT_LEGEND_OPTS = opts.LegendOpts(
     is_show=True,
     type_="scroll", 
-    pos_left="55%", 
-    pos_top = "20%",
+    pos_right="-60", 
+    pos_top = "30%",
+    padding = 12,
     orient="vertical",
+    item_gap=30,
     textstyle_opts=opts.TextStyleOpts(
         color='#FFFFFF'
     )
@@ -105,6 +107,7 @@ DEFAULT_YAXIS_OPTS = opts.AxisOpts(
         ),
     ),
     axislabel_opts=opts.LabelOpts(
+        font_size=12,
         formatter=yaxis_label_formatter()
     ),
     axispointer_opts=opts.AxisPointerOpts(),

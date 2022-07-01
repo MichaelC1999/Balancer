@@ -8,11 +8,7 @@ class CustomPieChart:
     def __init__(
         self,
         chart_title,
-        yaxis_name='',
-        xaxis_name='',
         height="1000px",
-        xaxis_namegap=50,
-        yaxis_namegap=50
     ):
         self.PIE_CHART = Pie(
             init_opts=opts.InitOpts(
@@ -40,14 +36,6 @@ class CustomPieChart:
         )
         
         self.DEFAULT_TITLE_OPTS.opts[0]['text'] = chart_title
-        self.DEFAULT_XAXIS_OPTS.opts.update(
-            name=xaxis_name,
-            nameGap=xaxis_namegap
-        )
-        self.DEFAULT_YAXIS_OPTS.update(
-            name=yaxis_name,
-            nameGap=yaxis_namegap
-        )
 
         self.PIE_CHART.set_global_opts(
             title_opts=self.DEFAULT_TITLE_OPTS,
