@@ -52,6 +52,28 @@ veBAL_Subgraph = sg.load_subgraph(VOTE_BAL_SUBGRAPH_URL)
 
 st.set_page_config(layout='wide')
 
+def time_window_input(key, state_val):
+    # Need to format for timezones? State update works however changed input display SHOWS one day before
+    window_input = st.container()
+    start_val = datetime.datetime.fromtimestamp(int(state_val['window_start'])*86400)
+    end_val = datetime.datetime.fromtimestamp(int(state_val['window_end'])*86400)
+    now = datetime.datetime.now()
+    creation = datetime.datetime(2021, 4, 19)
+    with window_input:
+        st.date_input('Start', value=start_val, min_value=creation, max_value=now, key=key+'start', on_change=format_calendar_input, args=(key, state_val, 'start'))
+        st.date_input('End', value=end_val, min_value=creation, max_value=now, key=key+'end', on_change=format_calendar_input, args=(key, state_val, 'end'))
+    return window_input
+
+def format_calendar_input(key, state_val, changed_window):
+    new_val=st.session_state[key+changed_window]
+    changed_window = 'window_' + changed_window
+    state_val[changed_window] = (datetime.datetime.combine(new_val, datetime.datetime.max.time()).timestamp()-43200)/86400
+    if state_val['window_start'] > state_val['window_end']:
+        end = state_val['window_end']
+        state_val['window_end'] = state_val['window_start']
+        state_val['window_start'] = end
+    set_chart_window(key, state_val['window_start'], state_val['window_end'])
+    
 def buttons_chart(key, state_val):
     buttons = st.container()
     with buttons:
@@ -59,6 +81,7 @@ def buttons_chart(key, state_val):
         st.button('1W', key=key+'1W', on_click=(lambda: set_chart_window(key, state_val['window_end'] - 7, state_val['window_end'])))
         st.button('1M', key=key+'1M', on_click=(lambda: set_chart_window(key, state_val['window_end'] - 30, state_val['window_end'])))
         st.button('1Y', key=key+'1Y', on_click=(lambda: set_chart_window(key, state_val['window_end'] - 365, state_val['window_end'])))
+        time_window_input(key, state_val)
     return buttons
 
 def buttons_ccy(state_type, element, state_val):
@@ -70,6 +93,7 @@ def buttons_ccy(state_type, element, state_val):
 
 def change_tab(tab):
     st.session_state['tab'] = tab
+
 tabs = ['Main', 'Liquidity Providers', 'Traders', 'Treasury', 'veBAL', 'By Pool', 'By Chain', 'By Product']
 if 'tab' not in st.session_state:
     st.session_state['tab'] = 'Main'
@@ -134,7 +158,6 @@ def format_currency(x):
 
 
 def get_top_10_liquidityPools_tvl(liquidityPools_df):
-
     top_10 = liquidityPools_df.sort_values(by='liquidityPools_totalValueLockedUSD',ascending=False)[:10]
     top_10 = top_10.rename(columns={'liquidityPools_totalValueLockedUSD':'Total Value Locked', 'liquidityPools_name':'Pool'})
     return top_10
@@ -319,11 +342,12 @@ if st.session_state['tab'] == 'Main':
         key = 'Total Value Locked'
         if key not in st.session_state['chart_states']:
             xaxis_end = int(financial_df.index[len(financial_df.index)-1])
-            xaxis_start = xaxis_end - 365
+            xaxis_start = int(financial_df.index[0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
         
         state_val = st.session_state['chart_states'][key]
-        
         buttons_chart(key, state_val)
         buttons_ccy('chart',key, state_val)
         tvl1_chart = charts.generate_line_chart(financial_df, key, yaxis=key, xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val['ccy'])
@@ -339,7 +363,9 @@ if st.session_state['tab'] == 'Main':
         key = 'Daily Volume'
         if key not in st.session_state['chart_states']:
             xaxis_end = int(financial_df.index[len(financial_df.index)-1])
-            xaxis_start = xaxis_end - 365
+            xaxis_start = int(financial_df.index[0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
         
         state_val = st.session_state['chart_states'][key]
@@ -358,9 +384,11 @@ if st.session_state['tab'] == 'Main':
     with col3:
         key = 'Total Pool Count'
         if key not in st.session_state['chart_states']:
-            xaxis_end = int(financial_df.index[len(financial_df.index)-1])
-            xaxis_start = xaxis_end - 365
-            st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
+            xaxis_end = int(usage_df.index[len(usage_df.index)-1])
+            xaxis_start = int(usage_df.index[0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
+            st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': None}
         
         state_val = st.session_state['chart_states'][key]
         
@@ -379,8 +407,10 @@ if st.session_state['tab'] == 'Main':
     with col1:
         key = 'Daily Swap Count'
         if key not in st.session_state['chart_states']:
-            xaxis_end = int(financial_df.index[len(financial_df.index)-1])
-            xaxis_start = xaxis_end - 365
+            xaxis_end = int(usage_df.index[len(usage_df.index)-1])
+            xaxis_start = int(usage_df.index[0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': None}
         
         state_val = st.session_state['chart_states'][key]
@@ -398,7 +428,9 @@ if st.session_state['tab'] == 'Main':
         key = 'Daily Supply Revenue'
         if key not in st.session_state['chart_states']:
             xaxis_end = int(financial_df.index[len(financial_df.index)-1])
-            xaxis_start = xaxis_end - 365
+            xaxis_start = int(financial_df.index[0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
         
         state_val = st.session_state['chart_states'][key]
@@ -416,7 +448,9 @@ if st.session_state['tab'] == 'Main':
         key = 'Protocol Treasury'
         if key not in st.session_state['chart_states']:
             xaxis_end = int(financial_df.index[len(financial_df.index)-1])
-            xaxis_start = xaxis_end - 365
+            xaxis_start = int(financial_df.index[0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
         
         state_val = st.session_state['chart_states'][key]
@@ -436,9 +470,11 @@ if st.session_state['tab'] == 'Main':
     with col1:
         key = 'Locked Balance'
         if key not in st.session_state['chart_states']:
-            xaxis_end = int(financial_df.index[len(financial_df.index)-1])
-            xaxis_start = xaxis_end - 365
-            st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': None}
+            xaxis_end = int(veBAL_locked_df['Days'][len(veBAL_locked_df['Days'])-1])
+            xaxis_start = int(veBAL_locked_df['Days'][0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
+            st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'veBAL'}
         
         state_val = st.session_state['chart_states'][key]
         
@@ -455,8 +491,10 @@ if st.session_state['tab'] == 'Main':
         key = 'veBAL revenues'
         if key not in st.session_state['chart_states']:
             xaxis_end = int(financial_df.index[len(financial_df.index)-1])
-            xaxis_start = xaxis_end - 365
-            st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
+            xaxis_start = int(financial_df.index[0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
+            st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'veBAL'}
         
         state_val = st.session_state['chart_states'][key]
         buttons_chart(key, state_val)
@@ -472,9 +510,9 @@ if st.session_state['tab'] == 'Main':
     with col3:
         # veBAL_unlocks =  charts.build_bar_chart(veBAL_unlocks_df, 'Amount To Unlock')
         key = 'Future unlocks'
+        now = int(datetime.datetime.timestamp(datetime.datetime.now()))
         if key not in st.session_state['chart_states']:
-            now = int(datetime.datetime.timestamp(datetime.datetime.now()))
-            st.session_state['chart_states'][key] = {'window_start': now, 'window_end': now + 365*86400, 'agg': 'D', 'ccy': None}
+            st.session_state['chart_states'][key] = {'window_start': now, 'window_end': now + 365*86400, 'agg': 'D', 'ccy': "veBAL"}
         state_val = st.session_state['chart_states'][key]
         buttons = st.container()
         with buttons:
@@ -482,10 +520,7 @@ if st.session_state['tab'] == 'Main':
             st.button('Weekly', key=key+'Weekly', on_click=set_agg, args=(key,'W'))
             st.button('Monthly', key=key+'Monthly', on_click=set_agg, args=(key,'M'))
         state_val = st.session_state['chart_states'][key]
-        buttons_chart(key, state_val)
 
-        timeAgg = "%Y-%m-%d"
-        timeAgg = "%Y-%m"
         if state_val['agg']=='D':            
             veBAL_unlocks_df=pd.DataFrame({"Days": veBAL_unlocks_df.groupby('Days')['Days'].first(), "Date": veBAL_unlocks_df.groupby('Days')['Date'].first(), 'Amount To Unlock': veBAL_unlocks_df.groupby('Days')['Amount To Unlock'].sum().round(2)})
             veBAL_unlocks_df['Date'] = veBAL_unlocks_df['Date'].apply(lambda x: str(x.month) + '-' + str(x.day) + '-' + str(x.year))
@@ -520,8 +555,10 @@ if st.session_state['tab'] == 'Main':
     with col1:
         key = 'Mainnet LP Yield'
         if key not in st.session_state['chart_states']:
-            xaxis_end = int(financial_df.index[len(financial_df.index)-1])
-            xaxis_start = xaxis_end - 365
+            xaxis_end = int(mainnet_financial_df.index[len(mainnet_financial_df.index)-1])
+            xaxis_start = int(mainnet_financial_df.index[0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': '%'}
         
         state_val = st.session_state['chart_states'][key]
@@ -542,8 +579,10 @@ if st.session_state['tab'] == 'Main':
     with col3:
         key = 'Arbitrum LP Yield'
         if key not in st.session_state['chart_states']:
-            xaxis_end = int(financial_df.index[len(financial_df.index)-1])
-            xaxis_start = xaxis_end - 365
+            xaxis_end = int(arbitrum_financial_df.index[len(arbitrum_financial_df.index)-1])
+            xaxis_start = int(arbitrum_financial_df.index[0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': '%'}
         
         state_val = st.session_state['chart_states'][key]
@@ -656,14 +695,16 @@ elif st.session_state['tab'] == 'Liquidity Providers':
         key = 'Historical Yield'
         if key not in st.session_state['chart_states']:
             xaxis_end = int(financial_df.index[len(financial_df.index)-1])
-            xaxis_start = xaxis_end - 365
+            xaxis_start = int(financial_df.index[0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
         
         state_val = st.session_state['chart_states'][key]
         
         buttons_chart(key, state_val)
                         
-        historical_yield = charts.generate_line_chart(financial_df, key,yaxis='HistoricalYield', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val['ccy'])
+        historical_yield = charts.generate_line_chart(financial_df, key,yaxis='Historical Yield', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val['ccy'])
         st_pyecharts(
             chart=historical_yield.LINE_CHART,
             height='450px',
@@ -744,7 +785,10 @@ elif st.session_state['tab'] == 'Traders':
         tx_df['Days'] = tx_df['timestamp'].apply(lambda x: x/86400)
         if key not in st.session_state['chart_states']:
             xaxis_end = int(tx_df['Days'][len(tx_df['Days'])-1])
-            xaxis_start = xaxis_end - 365
+            xaxis_start = int(tx_df['Days'][0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
+
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
         
         state_val = st.session_state['chart_states'][key]
@@ -848,7 +892,7 @@ elif st.session_state['tab'] == 'By Pool':
     pool_timeseries = datafields.get_pool_timeseries_df(subgraph_to_use, sg, st.session_state['pool_label'])
     pool_timeseries['timestamp'] = pool_timeseries['timestamp']/86400
     with st.container():
-        st.subheader('Pool ENtity data' + str(pool_data['Name'].tolist()[0]))
+        st.subheader(str(pool_data['Name'].tolist()[0]))
 
 
     col1, col2, col3 = st.columns(3)
@@ -875,7 +919,9 @@ elif st.session_state['tab'] == 'By Pool':
         key = 'Total Value Locked ' + str(pool_data['Name'].tolist()[0])
         if key not in st.session_state['chart_states']:
             xaxis_end = int(pool_timeseries['timestamp'][len(pool_timeseries['timestamp'])-1])
-            xaxis_start = xaxis_end - 365
+            xaxis_start = int(pool_timeseries['timestamp'][0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
         
         state_val = st.session_state['chart_states'][key]
@@ -892,7 +938,9 @@ elif st.session_state['tab'] == 'By Pool':
         key = 'Daily Volume ' + str(pool_data['Name'].tolist()[0])
         if key not in st.session_state['chart_states']:
             xaxis_end = int(pool_timeseries['timestamp'][len(pool_timeseries['timestamp'])-1])
-            xaxis_start = xaxis_end - 365
+            xaxis_start = int(pool_timeseries['timestamp'][0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
         
         state_val = st.session_state['chart_states'][key]
@@ -909,7 +957,9 @@ elif st.session_state['tab'] == 'By Pool':
         key = 'Daily Supply Revenue ' + str(pool_data['Name'].tolist()[0])
         if key not in st.session_state['chart_states']:
             xaxis_end = int(pool_timeseries['timestamp'][len(pool_timeseries['timestamp'])-1])
-            xaxis_start = xaxis_end - 365
+            xaxis_start = int(pool_timeseries['timestamp'][0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
         
         state_val = st.session_state['chart_states'][key]
@@ -931,7 +981,9 @@ elif st.session_state['tab'] == 'By Pool':
         key = 'LP Yield ' + str(pool_data['Name'].tolist()[0])
         if key not in st.session_state['chart_states']:
             xaxis_end = int(pool_timeseries['timestamp'][len(pool_timeseries['timestamp'])-1])
-            xaxis_start = xaxis_end - 365
+            xaxis_start = int(pool_timeseries['timestamp'][0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
         
         state_val = st.session_state['chart_states'][key]
@@ -947,7 +999,9 @@ elif st.session_state['tab'] == 'By Pool':
         key = 'Daily Protocol Revenue ' + str(pool_data['Name'].tolist()[0])
         if key not in st.session_state['chart_states']:
             xaxis_end = int(pool_timeseries['timestamp'][len(pool_timeseries['timestamp'])-1])
-            xaxis_start = xaxis_end - 365
+            xaxis_start = int(pool_timeseries['timestamp'][0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
         
         state_val = st.session_state['chart_states'][key]
@@ -966,8 +1020,24 @@ elif st.session_state['tab'] == 'By Pool':
         st.subheader('Number of traders')
 
     with col2:
-        st.subheader('veBal rewards received')
-
+        key = 'Holder Revenue ' + str(pool_data['Name'].tolist()[0])
+        if key not in st.session_state['chart_states']:
+            xaxis_end = int(pool_timeseries['timestamp'][len(pool_timeseries['timestamp'])-1])
+            xaxis_start = int(pool_timeseries['timestamp'][0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
+            st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'veBAL'}
+        
+        state_val = st.session_state['chart_states'][key]
+        
+        buttons_chart(key, state_val)
+        buttons_ccy('chart',key, state_val)
+        protocol_rev_from_pool = charts.generate_line_chart(pool_timeseries, key, xaxis='timestamp', yaxis="Daily veBAL Holder Revenue", xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val['ccy'])
+        st_pyecharts(
+            chart=protocol_rev_from_pool.LINE_CHART,
+            height='450px',
+            key=key,
+        )
     with col3:
         st.subheader('Number of swaps')
 
@@ -1002,7 +1072,9 @@ elif st.session_state['tab'] == 'By Chain':
         key = 'Total Value Locked ' + st.session_state['network']
         if key not in st.session_state['chart_states']:
             xaxis_end = int(current_financial_df.index[len(current_financial_df.index)-1])
-            xaxis_start = xaxis_end - 365
+            xaxis_start = int(current_financial_df.index[0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
         
         state_val = st.session_state['chart_states'][key]
@@ -1019,7 +1091,9 @@ elif st.session_state['tab'] == 'By Chain':
         key = 'Daily Volume ' + st.session_state['network']
         if key not in st.session_state['chart_states']:
             xaxis_end = int(current_financial_df.index[len(current_financial_df.index)-1])
-            xaxis_start = xaxis_end - 365
+            xaxis_start = int(current_financial_df.index[0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
         
         state_val = st.session_state['chart_states'][key]
@@ -1036,8 +1110,10 @@ elif st.session_state['tab'] == 'By Chain':
         key = 'Total Pool Count ' + st.session_state['network']
         if key not in st.session_state['chart_states']:
             xaxis_end = int(current_financial_df.index[len(current_financial_df.index)-1])
-            xaxis_start = xaxis_end - 365
-            st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
+            xaxis_start = int(current_financial_df.index[0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
+            st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': None}
         
         state_val = st.session_state['chart_states'][key]
         
@@ -1057,7 +1133,9 @@ elif st.session_state['tab'] == 'By Chain':
         key = 'LP Revenues ' + st.session_state['network']
         if key not in st.session_state['chart_states']:
             xaxis_end = int(current_financial_df.index[len(current_financial_df.index)-1])
-            xaxis_start = xaxis_end - 365
+            xaxis_start = int(current_financial_df.index[0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
         
         state_val = st.session_state['chart_states'][key]
@@ -1074,8 +1152,10 @@ elif st.session_state['tab'] == 'By Chain':
         key = 'LP Yield ' + st.session_state['network']
         if key not in st.session_state['chart_states']:
             xaxis_end = int(current_financial_df.index[len(current_financial_df.index)-1])
-            xaxis_start = xaxis_end - 365
-            st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
+            xaxis_start = int(current_financial_df.index[0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
+            st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': '%'}
         
         state_val = st.session_state['chart_states'][key]
         
@@ -1092,8 +1172,10 @@ elif st.session_state['tab'] == 'By Chain':
         key = 'Number of Swaps ' + st.session_state['network']
         if key not in st.session_state['chart_states']:
             xaxis_end = int(current_financial_df.index[len(current_financial_df.index)-1])
-            xaxis_start = xaxis_end - 365
-            st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
+            xaxis_start = int(current_financial_df.index[0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
+            st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': None}
         
         state_val = st.session_state['chart_states'][key]
         
@@ -1109,7 +1191,9 @@ elif st.session_state['tab'] == 'By Chain':
         key = 'Protocol Revenue ' + st.session_state['network']
         if key not in st.session_state['chart_states']:
             xaxis_end = int(current_financial_df.index[len(current_financial_df.index)-1])
-            xaxis_start = xaxis_end - 365
+            xaxis_start = int(current_financial_df.index[0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
         
         state_val = st.session_state['chart_states'][key]
@@ -1124,7 +1208,24 @@ elif st.session_state['tab'] == 'By Chain':
         )
 
     with col3:
-        st.subheader('vebal rewards received')
+        key = 'veBAL Revenue ' + st.session_state['network']
+        if key not in st.session_state['chart_states']:
+            xaxis_end = int(current_financial_df.index[len(current_financial_df.index)-1])
+            xaxis_start = int(current_financial_df.index[0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
+            st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'veBAL'}
+        
+        state_val = st.session_state['chart_states'][key]
+        
+        buttons_chart(key, state_val)
+        buttons_ccy('chart',key, state_val)
+        protocol_revenue = charts.generate_line_chart(current_financial_df, "Daily Holder Revenue " + st.session_state['network'], yaxis="Daily veBAL Holder Revenue", xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val['ccy'])
+        st_pyecharts(
+            chart=protocol_revenue.LINE_CHART,
+            height='450px',
+            key=key,
+        )
 
 elif st.session_state['tab'] == 'By Product':
     st.subheader('BY PRODUCT')

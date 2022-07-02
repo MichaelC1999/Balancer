@@ -14,7 +14,7 @@ ETH_HISTORY_DF=ETH_HISTORY_DF.set_index('Days')
 def get_financial_snapshots(subgraph, sg):
     financialSnapshot = subgraph.Query.financialsDailySnapshots(
     orderBy=subgraph.FinancialsDailySnapshot.timestamp,
-    orderDirection='asc',
+    orderDirection='desc',
     first=1000
     )
     df = sg.query_df([
@@ -47,8 +47,10 @@ def get_financial_snapshots(subgraph, sg):
     df['Days'] = df['financialsDailySnapshots_id'].astype(int)
     df["Daily veBAL Holder Revenue"] = df["Daily Protocol Revenue"] * .75
     df["Cumulative veBAL Holder Revenue"] = df['Cumulative Protocol Side Revenue'] * .75
-    df['HistoricalYield'] = df['Total Value Locked']/df['Daily Total Revenue']
-    df["Base Yield"] = df["Daily Supply Revenue"]/df["Total Value Locked"] * 100
+    df['Historical Yield'] = df['Total Value Locked']/df['Daily Total Revenue']
+    df["Base Yield"] = round(df["Daily Supply Revenue"]/df["Total Value Locked"] * 100,2)
+    df = df.iloc[::-1]
+
     df = df.join(ETH_HISTORY_DF['prices'], on="Days")
     df = df.set_index("id")
     print(ETH_HISTORY_DF, df.index, df)
@@ -69,7 +71,7 @@ def merge_financials_dfs(dfs, sg):
 def get_usage_metrics_df(subgraph, sg, latest_schema=True):
     usageMetrics = subgraph.Query.usageMetricsDailySnapshots(
     orderBy=subgraph.UsageMetricsDailySnapshot.timestamp,
-    orderDirection='asc',
+    orderDirection='desc',
     first=1000
     )
     query_fields = [
@@ -98,6 +100,7 @@ def get_usage_metrics_df(subgraph, sg, latest_schema=True):
     df['Days'] = df['usageMetricsDailySnapshots_id'].astype(int)
     
     df = df.join(ETH_HISTORY_DF['prices'], on="Days")
+    df = df.iloc[::-1]
 
     df['id'] = df['usageMetricsDailySnapshots_id']
     df = df.set_index("id")
@@ -182,7 +185,7 @@ def get_recent_24h_pool_snapshots(subgraph, sg):
     df = df.set_index("Days")
     df['Total Value Locked'] = df['Total Value Locked'].round(2)
     df['Daily Volume'] = df['Daily Volume'].round(2)
-    df["Base Yield"] = df["Daily Supply Revenue"]/df["Total Value Locked"] * 100
+    df["Base Yield"] = round(df["Daily Supply Revenue"]/df["Total Value Locked"] * 100, 2)
     df = df.join(ETH_HISTORY_DF['prices'], on="Days")
     df = df.set_index("id")
 
@@ -318,7 +321,7 @@ def get_veBAL_unlocks_df(veBAL_subgraph, sg):
     veBAL_data = veBAL_subgraph.Query.votingEscrowLocks(
         where={"unlockTime_gt": int(datetime.timestamp(now))},
         orderBy='unlockTime',
-        orderDirection='asc',
+        orderDirection='desc',
         first=1000
     )
     df = sg.query_df([
@@ -406,9 +409,10 @@ def get_pool_timeseries_df(subgraph, sg, pool):
         })
     df['Date'] = df['timestamp'].apply(lambda x: datetime.utcfromtimestamp(int(x)))
     df['Days'] = df['timestamp'].apply(lambda x: int(int(x)/86400))
+    df["Daily veBAL Holder Revenue"] = df['Daily Protocol Revenue'] * .75
     df = df.set_index("Days")
-
-    df["Base Yield"] = df["Daily Supply Revenue"]/df["Total Value Locked"] * 100
+    df = df.iloc[::-1]
+    df["Base Yield"] = round(df["Daily Supply Revenue"]/df["Total Value Locked"] * 100,2)
     df = df.join(ETH_HISTORY_DF['prices'], on="Days")
     df = df.set_index("id")
 
