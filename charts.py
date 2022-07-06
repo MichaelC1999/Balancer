@@ -1,4 +1,3 @@
-import altair as alt
 import pandas as pd
 import streamlit as st
 from datetime import datetime
@@ -6,12 +5,9 @@ from streamlit_echarts import st_pyecharts
 from pyecharts import options as opts
 import pyecharts
 from CustomCharts import CustomLineChart, CustomBarChart, CustomPieChart
+import plotly.graph_objects as go
 from utils import *
 from config import *
-
-date_axis = alt.X("Date:T", axis=alt.Axis(title=None, format="%Y-%m-%d", labelAngle=45, tickCount=20))
-nearest = alt.selection(type='single', nearest=True, on='mouseover',
-                        fields=['Date'], empty='none')
 
 
 def generate_line_chart(df, title, xaxis=None, yaxis="id", xaxis_zoom_start=None, xaxis_zoom_end=None, ccy=None):
@@ -32,7 +28,6 @@ def generate_line_chart(df, title, xaxis=None, yaxis="id", xaxis_zoom_start=None
         xaxis_zoom_start = int(xaxis[0])
 
     slider_points = get_xaxis_zoom_range(xaxis, xaxis_zoom_start, xaxis_zoom_end)
-    # if ccy == "USD":
 
     if ccy == 'ETH' and "prices" in df:
         df[yaxis] = df[yaxis].apply(lambda x: float(x))/df["prices"]
@@ -206,17 +201,5 @@ def generate_line_chart_multiline(df, title, yaxis, xaxis=None, xaxis_zoom_start
         )
     return chart
 
-
-
-
-def build_pie_chart(df, theta, color):
-    base = alt.Chart(df).encode(
-        theta=alt.Theta(theta+':Q', stack=True),
-        color=alt.Color(color+':N', legend=None),
-        tooltip=[alt.Tooltip(theta),
-                 alt.Tooltip(color)]
-    )
-    pie = base.mark_arc(outerRadius=110)
-    text = base.mark_text(radius=130, size=8).encode(text=color)
-    return pie + text
-
+def donut(labels=[], values=[], colors=['rgb(74, 144, 226)', 'rgb(255, 148, 0)', 'rgb(255, 0, 0)','rgb(99, 210, 142)', 'rgb(6, 4, 4)']):
+    return go.Figure(data=[go.Pie(labels=labels, values=values, hole=.5, marker_colors = colors)])

@@ -35,7 +35,7 @@ sg = Subgrounds()
 MAINNET_SUBGRAPH_URL = 'https://api.thegraph.com/subgraphs/name/messari/balancer-v2-ethereum' # messari/balancerV2-ethereum
 balancerV2_mainnet = sg.load_subgraph(MAINNET_SUBGRAPH_URL)
 
-MATIC_SUBGRAPH_URL = 'https://api.thegraph.com/subgraphs/name/messari/balancer-v2-polygon' # messari/balancerV2-polygon
+MATIC_SUBGRAPH_URL = 'https://api.thegraph.com/subgraphs/name/messari/balancer-v2-ethereum' # messari/balancerV2-polygon
 balancerV2_matic = sg.load_subgraph(MATIC_SUBGRAPH_URL)
 
 ARBITRUM_SUBGRAPH_URL = 'https://api.thegraph.com/subgraphs/name/messari/balancer-v2-arbitrum' # messari/balancerV2-arbitrum
@@ -156,19 +156,6 @@ data_loading = st.text(f'[Every {REFRESH_INTERVAL_SEC} seconds] Loading data...'
 def format_currency(x):
     return '${:.1f}K'.format(x/1000)
 
-
-def get_top_10_liquidityPools_tvl(liquidityPools_df):
-    top_10 = liquidityPools_df.sort_values(by='liquidityPools_totalValueLockedUSD',ascending=False)[:10]
-    top_10 = top_10.rename(columns={'liquidityPools_totalValueLockedUSD':'Total Value Locked', 'liquidityPools_name':'Pool'})
-    return top_10
-
-def get_top_10_liquidityPools_revenue(liquidityPools_df):
-    # st.markdown(str(liquidityPools_df.columns.tolist()))
-    top_10 = liquidityPools_df.sort_values(by='liquidityPools_cumulativeTotalRevenueUSD',ascending=False)[:10]
-    top_10 = top_10.rename(columns={'liquidityPools_cumulativeTotalRevenueUSD':'Revenues', 'liquidityPools_name':'Pool'})
-    return top_10    
-
-
 def get_asset_tvl(liquidityPools_df):
     assets_df = liquidityPools_df.copy()
     for i, row in assets_df.iterrows():
@@ -197,8 +184,8 @@ merge_usage = []
 mainnet_financial_df = None
 mainnet_usage_df = None
 
-# matic_financial_df = None
-# matic_usage_df = None
+matic_financial_df = None
+matic_usage_df = None
 
 arbitrum_financial_df = None
 arbitrum_usage_df = None
@@ -207,7 +194,7 @@ financial_df = None
 usage_df = None
 
 mainnet_liquidityPools_df = None
-# matic_liquidityPools_df = None
+matic_liquidityPools_df = None
 arbitrum_liquidityPools_df = None
 
 liquidityPools_df = None
@@ -220,12 +207,12 @@ veBAL_locked_df = None
 veBAL_unlocks_df = None
 
 mainnet_liquidityPools_df = None
-# matic_liquidityPools_df = None
+matic_liquidityPools_df = None
 arbitrum_liquidityPools_df = None
 liquidityPools_df = None
 top_10 = None
 mainnet_top_10_rev = None
-# matic_top_10_rev = None
+matic_top_10_rev = None
 arbitrum_top_10_rev = None
 
 top_10_rev = None
@@ -262,30 +249,36 @@ def annualize_value(val_list):
     annual_val = (sum(val_list) / num_vals) * 365
     return annual_val
 
+mainnet_financial_df = datafields.get_financial_snapshots(balancerV2_mainnet, sg)
+mainnet_usage_df = datafields.get_usage_metrics_df(balancerV2_mainnet, sg)
+merge_fin.append(mainnet_financial_df)
+merge_usage.append(mainnet_usage_df)
+
+matic_financial_df = datafields.get_financial_snapshots(balancerV2_matic, sg) 
+matic_usage_df = datafields.get_usage_metrics_df(balancerV2_matic, sg)
+merge_fin.append(matic_financial_df)
+merge_usage.append(matic_usage_df)
+
+arbitrum_financial_df = datafields.get_financial_snapshots(balancerV2_arbitrum, sg)
+arbitrum_usage_df = datafields.get_usage_metrics_df(balancerV2_arbitrum, sg)
+merge_fin.append(arbitrum_financial_df)
+merge_usage.append(arbitrum_usage_df)
+
+financial_df = datafields.merge_financials_dfs(merge_fin)
+usage_df = datafields.merge_usage_dfs(merge_usage)
+
+revenue_df = datafields.get_revenue_df(financial_df)
+# veBAL_df = charts.get_veBAL_df(veBAL_Subgraph)
+veBAL_locked_df = datafields.get_veBAL_locked_df(veBAL_Subgraph, sg)
+veBAL_unlocks_df = datafields.get_veBAL_unlocks_df(veBAL_Subgraph, sg)
+
+mainnet_liquidityPools_df = datafields.get_pools_df(balancerV2_mainnet, sg, 'mainnet')
+matic_liquidityPools_df = datafields.get_pools_df(balancerV2_matic, sg, 'matic')
+arbitrum_liquidityPools_df = datafields.get_pools_df(balancerV2_arbitrum, sg, 'arbitrum')
+
+liquidityPools_df = datafields.merge_dfs([mainnet_liquidityPools_df, matic_liquidityPools_df, arbitrum_liquidityPools_df], 'Total Value Locked') 
+
 if st.session_state['tab'] == 'Main':
-
-    mainnet_financial_df = datafields.get_financial_snapshots(balancerV2_mainnet, sg)
-    mainnet_usage_df = datafields.get_usage_metrics_df(balancerV2_mainnet, sg)
-    merge_fin.append(mainnet_financial_df)
-    merge_usage.append(mainnet_usage_df)
-
-    # matic_financial_df = datafields.get_financial_snapshots(balancerV2_matic, sg) 
-    # matic_usage_df = datafields.get_usage_metrics_df(balancerV2_matic, sg)
-    # merge_fin.append(matic_financial_df)
-    # merge_usage.append(matic_usage_df)
-
-    arbitrum_financial_df = datafields.get_financial_snapshots(balancerV2_arbitrum, sg)
-    arbitrum_usage_df = datafields.get_usage_metrics_df(balancerV2_arbitrum, sg)
-    merge_fin.append(arbitrum_financial_df)
-    merge_usage.append(arbitrum_usage_df)
-
-    financial_df = datafields.merge_financials_dfs(merge_fin, sg)
-    usage_df = datafields.merge_usage_dfs(merge_usage, sg)
-
-    revenue_df = datafields.get_revenue_df(financial_df, sg)
-    # veBAL_df = charts.get_veBAL_df(veBAL_Subgraph)
-    veBAL_locked_df = datafields.get_veBAL_locked_df(veBAL_Subgraph, sg)
-    veBAL_unlocks_df = datafields.get_veBAL_unlocks_df(veBAL_Subgraph, sg)
 
     st.header('Protocol Snapshot')
     col1, col2, col3, col4, col5, col6 = st.columns(6)
@@ -572,9 +565,24 @@ if st.session_state['tab'] == 'Main':
             key= key,
         )
     with col2:
-        st.markdown('TEMP')
-        # base_yield = chart = charts.generate_line_chart(matic_financial_df, 'Base Yield', 'Matic LP Yield', ccy=state_val['ccy'])
-        # st.altair_chart(base_yield, use_container_width=True)
+        key = 'Matic LP Yield'
+        if key not in st.session_state['chart_states']:
+            xaxis_end = int(matic_financial_df.index[len(matic_financial_df.index)-1])
+            xaxis_start = int(matic_financial_df.index[0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
+            st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': '%'}
+        
+        state_val = st.session_state['chart_states'][key]
+        
+        buttons_chart(key, state_val)
+
+        chart = charts.generate_line_chart(matic_financial_df, key, yaxis='Base Yield', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val['ccy'])
+        st_pyecharts(
+            chart=chart.LINE_CHART,
+            height='450px',
+            key= key,
+        )
 
     with col3:
         key = 'Arbitrum LP Yield'
@@ -586,16 +594,15 @@ if st.session_state['tab'] == 'Main':
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': '%'}
         
         state_val = st.session_state['chart_states'][key]
-        
         buttons_chart(key, state_val)
 
-                        
         chart = charts.generate_line_chart(arbitrum_financial_df, key, yaxis='Base Yield', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val['ccy'])
         st_pyecharts(
             chart=chart.LINE_CHART,
             height='450px',
             key= key,
         )
+
     st.header('Quarterly Report')
 
     quarters = quarterTable.get_quarter_table(financial_df, usage_df)
@@ -609,48 +616,28 @@ elif st.session_state['tab'] == 'Liquidity Providers':
 
 
     mainnet_withdrawals_30d_df = datafields.get_30d_withdraws(balancerV2_mainnet, sg)
-    # matic_withdrawals_30d_df = datafields.get_30d_withdraws(balancerV2_matic, sg)
+    matic_withdrawals_30d_df = datafields.get_30d_withdraws(balancerV2_matic, sg)
     arbitrum_withdrawals_30d_df = datafields.get_30d_withdraws(balancerV2_arbitrum, sg)
 
-    withdrawals_30d_df = datafields.merge_dfs([mainnet_withdrawals_30d_df, arbitrum_withdrawals_30d_df], sg, 'Amount')
-
+    withdrawals_30d_df = datafields.merge_dfs([mainnet_withdrawals_30d_df, matic_withdrawals_30d_df, arbitrum_withdrawals_30d_df], 'Amount')
     
     mainnet_24h_pool_snapshots_df = datafields.get_recent_24h_pool_snapshots(balancerV2_mainnet, sg)
-    # matic_24h_pool_snapshots_df = datafields.get_recent_24h_pool_snapshots(balancerV2_matic, sg)
+    matic_24h_pool_snapshots_df = datafields.get_recent_24h_pool_snapshots(balancerV2_matic, sg)
     arbitrum_24h_pool_snapshots_df = datafields.get_recent_24h_pool_snapshots(balancerV2_arbitrum, sg)
 
-    all_24h_pool_snapshots_df = datafields.merge_dfs([mainnet_24h_pool_snapshots_df, arbitrum_24h_pool_snapshots_df], sg, st.session_state['table_states']['Pool Snaps']['rank_col'])
+    all_24h_pool_snapshots_df = datafields.merge_dfs([mainnet_24h_pool_snapshots_df, matic_24h_pool_snapshots_df, arbitrum_24h_pool_snapshots_df], st.session_state['table_states']['Pool Snaps']['rank_col'])
 
+    mainnet_top_10_rev = datafields.get_top_x_liquidityPools(balancerV2_mainnet, sg, 'cumulativeTotalRevenueUSD', 10)
+    matic_top_10_rev = datafields.get_top_x_liquidityPools(balancerV2_matic, sg, 'cumulativeTotalRevenueUSD', 10)
+    arbitrum_top_10_rev = datafields.get_top_x_liquidityPools(balancerV2_arbitrum, sg, 'cumulativeTotalRevenueUSD', 10)
 
-    if financial_df is None:
-        mainnet_financial_df = datafields.get_financial_snapshots(balancerV2_mainnet, sg)
-        merge_fin.append(mainnet_financial_df)
+    top_10_rev = datafields.merge_dfs([mainnet_top_10_rev, matic_top_10_rev, arbitrum_top_10_rev], 'cumulativeTotalRevenueUSD')
 
-        # matic_financial_df = datafields.get_financial_snapshots(balancerV2_matic, sg) 
-        # merge_fin.append(matic_financial_df)
+    mainnet_top_10_vol = datafields.get_top_x_liquidityPools(balancerV2_mainnet, sg, 'cumulativeVolumeUSD', 10)
+    matic_top_10_vol = datafields.get_top_x_liquidityPools(balancerV2_matic, sg, 'cumulativeVolumeUSD', 10)
+    arbitrum_top_10_vol = datafields.get_top_x_liquidityPools(balancerV2_arbitrum, sg, 'cumulativeVolumeUSD', 10)
 
-        arbitrum_financial_df = datafields.get_financial_snapshots(balancerV2_arbitrum, sg)
-        merge_fin.append(arbitrum_financial_df)
-
-        financial_df = datafields.merge_financials_dfs(merge_fin, sg)
-    if liquidityPools_df is None:
-        mainnet_liquidityPools_df = datafields.get_pools_df(balancerV2_mainnet, sg, 'mainnet')
-        # matic_liquidityPools_df = datafields.get_pools_df(balancerV2_matic, sg, 'matic')
-        arbitrum_liquidityPools_df = datafields.get_pools_df(balancerV2_arbitrum, sg, 'arbitrum')
-
-        liquidityPools_df = datafields.merge_dfs([mainnet_liquidityPools_df, arbitrum_liquidityPools_df], sg, 'Total Value Locked') 
-        top_10 = liquidityPools_df.iloc[:10]
-        mainnet_top_10_rev = datafields.get_top_x_liquidityPools(balancerV2_mainnet, sg, 'cumulativeTotalRevenueUSD', 10)
-        # matic_top_10_rev = datafields.get_top_x_liquidityPools(balancerV2_matic, sg, 'cumulativeTotalRevenueUSD', 10)
-        arbitrum_top_10_rev = datafields.get_top_x_liquidityPools(balancerV2_arbitrum, sg, 'cumulativeTotalRevenueUSD', 10)
-
-        top_10_rev = datafields.merge_dfs([mainnet_top_10_rev, arbitrum_top_10_rev], sg, 'cumulativeTotalRevenueUSD')
-
-        mainnet_top_10_vol = datafields.get_top_x_liquidityPools(balancerV2_mainnet, sg, 'cumulativeVolumeUSD', 10)
-        # matic_top_10_vol = datafields.get_top_x_liquidityPools(balancerV2_matic, sg, 'cumulativeVolumeUSD', 10)
-        arbitrum_top_10_vol = datafields.get_top_x_liquidityPools(balancerV2_arbitrum, sg, 'cumulativeVolumeUSD', 10)
-
-        top_10_vol = datafields.merge_dfs([mainnet_top_10_vol, arbitrum_top_10_vol], sg, 'cumulativeVolumeUSD')
+    top_10_vol = datafields.merge_dfs([mainnet_top_10_vol, matic_top_10_vol, arbitrum_top_10_vol], 'cumulativeVolumeUSD')
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -669,8 +656,6 @@ elif st.session_state['tab'] == 'Liquidity Providers':
             all_24h_pool_snapshots_df = all_24h_pool_snapshots_df.sort_values(by=state_val['rank_col'],ascending=False)
 
         st.dataframe(all_24h_pool_snapshots_df[['Pool Name', 'Total Value Locked', 'Daily Volume', 'Base Yield']][:10])
-        # top_10_liquidity_pools = charts.build_pie_chart(top_10, 'Total Value Locked', 'Pool')
-        # st.altair_chart(top_10_liquidity_pools, use_container_width=False)
 
     with col2:
         st.subheader('Largest Depositors')
@@ -727,9 +712,9 @@ elif st.session_state['tab'] == 'Liquidity Providers':
 
 elif st.session_state['tab'] == 'Traders':
     mainnet_swaps_df = datafields.get_swaps_df(balancerV2_mainnet, sg, 'amountInUSD')
-    # matic_swaps_df = datafields.get_swaps_df(balancerV2_matic, sg, 'amountInUSD')
+    matic_swaps_df = datafields.get_swaps_df(balancerV2_matic, sg, 'amountInUSD')
     arbitrum_swaps_df = datafields.get_swaps_df(balancerV2_arbitrum, sg, 'amountInUSD')
-    swaps_df = datafields.merge_dfs([mainnet_swaps_df, arbitrum_swaps_df], sg, 'Amount In')
+    swaps_df = datafields.merge_dfs([mainnet_swaps_df, matic_swaps_df, arbitrum_swaps_df], 'Amount In')
     
     if 'Largest Trades' not in st.session_state['table_states']:
         xaxis_end = int(int(datetime.datetime.timestamp(datetime.datetime.now()))/86400)
@@ -737,9 +722,9 @@ elif st.session_state['tab'] == 'Traders':
         st.session_state['table_states']['Largest Trades'] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
 
     mainnet_largest_swaps_window_df = datafields.get_swaps_df(balancerV2_mainnet, sg, 'amountInUSD', window_start=st.session_state['table_states']['Largest Trades']['window_start']*86400)
-    # matic_largest_swaps_window_df = datafields.get_swaps_df(balancerV2_matic, sg, 'amountInUSD', window_start=st.session_state['table_states']['Largest Trades']['window_start']*86400)
+    matic_largest_swaps_window_df = datafields.get_swaps_df(balancerV2_matic, sg, 'amountInUSD', window_start=st.session_state['table_states']['Largest Trades']['window_start']*86400)
     arbitrum_largest_swaps_window_df = datafields.get_swaps_df(balancerV2_arbitrum, sg, 'amountInUSD', window_start=st.session_state['table_states']['Largest Trades']['window_start']*86400)
-    largest_df = datafields.merge_dfs([mainnet_largest_swaps_window_df, arbitrum_largest_swaps_window_df], sg, 'Amount In')    
+    largest_df = datafields.merge_dfs([mainnet_largest_swaps_window_df, matic_largest_swaps_window_df, arbitrum_largest_swaps_window_df], 'Amount In')    
     
     col1, col2, col3 = st.columns(3)
 
@@ -872,11 +857,6 @@ elif st.session_state['tab'] == 'veBAL':
         st.subheader('veBAL gauge rewards')
 
 elif st.session_state['tab'] == 'By Pool':
-    mainnet_liquidityPools_df = datafields.get_pools_df(balancerV2_mainnet, sg, 'mainnet')
-    # matic_liquidityPools_df = datafields.get_pools_df(balancerV2_matic, sg, 'matic')
-    arbitrum_liquidityPools_df = datafields.get_pools_df(balancerV2_arbitrum, sg, 'arbitrum')
-
-    liquidityPools_df = datafields.merge_dfs([mainnet_liquidityPools_df, arbitrum_liquidityPools_df], sg, 'Total Value Locked')
 
     pool_selections = liquidityPools_df['pool_label'].tolist()
 
@@ -885,15 +865,38 @@ elif st.session_state['tab'] == 'By Pool':
 
     st.selectbox('Select Pool', pool_selections, key='pool_label')
 
-
     chain = st.session_state['pool_label'].split(' - ')[2]
     subgraph_to_use = globals()['balancerV2_' + chain]
+
     pool_data = datafields.get_pool_data_df(subgraph_to_use, sg, st.session_state['pool_label'])
     pool_timeseries = datafields.get_pool_timeseries_df(subgraph_to_use, sg, st.session_state['pool_label'])
     pool_timeseries['timestamp'] = pool_timeseries['timestamp']/86400
+
+    days_range = 14
+    if 'now' not in st.session_state:
+        st.session_state['now'] = datetime.datetime.now()
+    window_start = int(datetime.datetime.timestamp(st.session_state['now'])) - 86400 * days_range
+    swaps_by_range = []
+    labels = []
+    range_df_100 =datafields.get_swaps_df(subgraph_to_use, sg, 'amountInUSD', window_start=window_start, tx_above=0,tx_below=100, pool_id=pool_data.index.tolist()[0])
+    if isinstance(range_df_100, str) is False:
+        labels.append("$0-$100")
+        swaps_by_range.append(len((range_df_100).index))
+    range_df_1000 =datafields.get_swaps_df(subgraph_to_use, sg, 'amountInUSD', window_start=window_start, tx_above=100,tx_below=1000, pool_id=pool_data.index.tolist()[0])
+    if isinstance(range_df_1000, str) is False:
+        labels.append("$100-$1k")
+        swaps_by_range.append(len((range_df_1000).index))
+    range_df_10000 =datafields.get_swaps_df(subgraph_to_use, sg, 'amountInUSD', window_start=window_start, tx_above=1000,tx_below=10000, pool_id=pool_data.index.tolist()[0])
+    if isinstance(range_df_10000, str) is False:
+        labels.append("$1k-$10k")
+        swaps_by_range.append(len((range_df_10000).index))
+    range_df_over_10000 =datafields.get_swaps_df(subgraph_to_use, sg, 'amountInUSD', window_start=window_start, tx_above=10000, pool_id=pool_data.index.tolist()[0])
+    if isinstance(range_df_over_10000, str) is False:
+        labels.append(">$10k")
+        swaps_by_range.append(len((range_df_over_10000).index))
+       
     with st.container():
         st.subheader(str(pool_data['Name'].tolist()[0]))
-
 
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -1051,20 +1054,19 @@ elif st.session_state['tab'] == 'By Pool':
         st.subheader('Largest 10 Traders by volume past 30d')
 
     with col3:
-        st.subheader('donut chart transactions by size over last 30d')
+        if len(swaps_by_range) > 0:
+            st.subheader("Transactions By Size (Last 14 days)")
+            tx_by_size=charts.donut(labels, swaps_by_range, ['rgb(74, 144, 226)', 'rgb(255, 148, 0)', 'rgb(255, 0, 0)','rgb(99, 210, 142)', 'rgb(6, 4, 4)'])
+            st.plotly_chart(tx_by_size, use_container_width=True)
+        else:
+            st.subheader('No swaps in the last ' + str(days_range) + ' days.')
 
 elif st.session_state['tab'] == 'By Chain':
     
     st.selectbox('Select Network', networks, key='network')
 
     current_financial_df = globals()[st.session_state['network'] + '_financial_df']
-    if current_financial_df is None:
-        current_financial_df = datafields.get_financial_snapshots(globals()['balancerV2_' + st.session_state['network']], sg)
-    
     current_usage_df = globals()[st.session_state['network'] + '_usage_df']
-    if current_usage_df is None:
-        current_usage_df  = datafields.get_usage_metrics_df(globals()['balancerV2_' + st.session_state['network']], sg)
-
 
     col1, col2, col3 = st.columns(3)
 
@@ -1286,56 +1288,3 @@ elif st.session_state['tab'] == 'By Product':
 
     with col3:
         st.subheader('Donut revenue by pools in group')
-else:
-        
-
-    st.header('Financial Statement')
-
-    statement_df = get_financial_statement_df(financial_df)
-
-    st.table(data=statement_df[:10])
-
-
-    st.header('Financial Metrics')
-
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.subheader('placeholder')
-
-    with col2:
-        ps_ratio = charts.generate_line_chart(revenue_df, 'P/S Ratio', y_axis_format=None, ccy=state_val['ccy'])
-        st.altair_chart(ps_ratio, use_container_width=False)
-
-    with col3:
-        pe_ratio = charts.generate_line_chart(revenue_df, 'P/E Ratio', y_axis_format=None, ccy=state_val['ccy'])
-        st.altair_chart(pe_ratio, use_container_width=False)
-
-    st.header('Usage Metrics')
-
-    with st.container():
-        active = charts.generate_line_chart(usage_df, 'Daily Active Users', y_axis_format=None, ccy=state_val['ccy'])
-        new = charts.generate_line_chart(usage_df, 'Cumulative New Users', y_axis_format=None, ccy=state_val['ccy'])
-
-        st.altair_chart(active | new, use_container_width=False)
-
-
-    st.header('Live Transactions')
-
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.subheader('Swaps')
-        # # Swaps have a different set of fields than deposits/withdraws
-        # swaps_df = datafields.get_swaps_df(balancerV2_mainnet, sg, 'Swap')
-        # st.dataframe(swaps_df)
-
-    with col2:
-        st.subheader('Withdrawals')
-        withdrawals_df = datafields.get_events_df(balancerV2_mainnet, sg, 'Withdraw')
-        st.dataframe(withdrawals_df)
-
-    with col3:
-        st.subheader('Deposits')
-        deposits_df = datafields.get_events_df(balancerV2_mainnet, sg, 'Deposit')
-        st.dataframe(deposits_df)

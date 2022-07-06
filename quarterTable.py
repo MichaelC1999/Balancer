@@ -13,8 +13,8 @@ def get_quarterly_values(financial_df, usage_df, quarterWindows, quartersList, Q
     if iterator > 0:
         # Get current iterator swap amaount, subtract it by iterator - 1 amount, take this value and divide by iterator - 1 value, multiply this by 100
         QtReports["growth-Swaps"][iterator - 1] = str(round((float(QtReports["Swaps"][iterator - 1]) - float(QtReports["Swaps"][iterator])) / float(QtReports["Swaps"][iterator]) * 100, 2)) + "%"
-        QtReports["growth-Volume"][iterator - 1] = str(round((float(QtReports["LP Fees"][iterator - 1]) - float(QtReports["LP Fees"][iterator])) / float(QtReports["LP Fees"][iterator]) * 100, 2)) + "%"
-        QtReports["growth-Fees"][iterator - 1] = str(round((float(QtReports["Volume"][iterator - 1]) - float(QtReports["Volume"][iterator])) / float(QtReports["Volume"][iterator]) * 100, 2)) + "%"
+        QtReports["growth-Fees"][iterator - 1] = str(round((float(QtReports["LP Fees"][iterator - 1]) - float(QtReports["LP Fees"][iterator])) / float(QtReports["LP Fees"][iterator]) * 100, 2)) + "%"
+        QtReports["growth-Volume"][iterator - 1] = str(round((float(QtReports["Volume"][iterator - 1]) - float(QtReports["Volume"][iterator])) / float(QtReports["Volume"][iterator]) * 100, 2)) + "%"
         QtReports["growth-Liquidity"][iterator - 1] = str(round((float(QtReports["Liquidity"][iterator - 1]) - float(QtReports["Liquidity"][iterator])) / float(QtReports["Liquidity"][iterator]) * 100, 2)) + "%"
         QtReports["growth-Agg"][iterator - 1] = str(round((float(QtReports["Agg. New Pools"][iterator - 1]) - float(QtReports["Agg. New Pools"][iterator])) / float(QtReports["Agg. New Pools"][iterator]) * 100, 2)) + "%"
         QtReports["growth-Protocol"][iterator - 1] = str(round((float(QtReports["Protocol Revenue"][iterator - 1]) - float(QtReports["Protocol Revenue"][iterator])) / float(QtReports["Protocol Revenue"][iterator]) * 100, 2)) + "%"
