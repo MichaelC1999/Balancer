@@ -11,6 +11,8 @@ from config import *
 
 
 def generate_line_chart(df, title, xaxis=None, yaxis="id", xaxis_zoom_start=None, xaxis_zoom_end=None, ccy=None):
+    df = df.round(2)
+
     if ccy is not None:
         title += ' (' + ccy + ')'
     chart = CustomLineChart(
@@ -29,8 +31,9 @@ def generate_line_chart(df, title, xaxis=None, yaxis="id", xaxis_zoom_start=None
 
     slider_points = get_xaxis_zoom_range(xaxis, xaxis_zoom_start, xaxis_zoom_end)
 
-    if ccy == 'ETH' and "prices" in df:
-        df[yaxis] = df[yaxis].apply(lambda x: float(x))/df["prices"]
+    if ccy in ccy_options:
+        df[yaxis] = df[yaxis].apply(lambda x: float(x))/df[ccy+" prices"]
+        df[yaxis] = df[yaxis].apply(lambda x: round(x,2))
 
     xaxis_data = format_xaxis(xaxis)
     chart.add_xaxis(xaxis_data)
@@ -55,6 +58,8 @@ def generate_line_chart(df, title, xaxis=None, yaxis="id", xaxis_zoom_start=None
     return chart
 
 def generate_forward_unlock_bar_chart(df, title, xaxis=None, yaxis="id", ccy=None):
+    df = df.round(2)
+
     chart = CustomBarChart(
         chart_title=title
     )
@@ -63,8 +68,9 @@ def generate_forward_unlock_bar_chart(df, title, xaxis=None, yaxis="id", ccy=Non
     else:
         xaxis=df[xaxis]
 
-    if ccy == 'ETH' and "prices" in df:
-        df[yaxis] = df[yaxis].apply(lambda x: float(x))/df["prices"]
+    if ccy in ccy_options:
+        df[yaxis] = df[yaxis].apply(lambda x: float(x))/df[ccy+" prices"]
+        df[yaxis] = df[yaxis].apply(lambda x: round(x,2))
 
     xaxis_data = format_xaxis(xaxis)
     chart.add_xaxis_bar_chart(xaxis_data)
@@ -90,6 +96,8 @@ def generate_forward_unlock_bar_chart(df, title, xaxis=None, yaxis="id", ccy=Non
 
 
 def generate_combo_chart(df, title, yaxis_bar, yaxis_line, xaxis=None, xaxis_zoom_start=None, xaxis_zoom_end=None, ccy=None):
+    df = df.round(2)
+
     chart = CustomBarChart(
         chart_title=title
     )
@@ -103,10 +111,12 @@ def generate_combo_chart(df, title, yaxis_bar, yaxis_line, xaxis=None, xaxis_zoo
     chart.add_xaxis_bar_chart(xaxis_data=xaxis_data)
     chart.add_xaxis_line_chart(xaxis_data=xaxis_data)
     
-    if ccy == 'ETH' and "prices" in df:
-        df[yaxis_bar] = df[yaxis_bar].apply(lambda x: float(x))/df["prices"]
-        df[yaxis_line] = df[yaxis_line].apply(lambda x: float(x))/df["prices"]
-    
+    if ccy in ccy_options:
+        df[yaxis_line] = df[yaxis_line].apply(lambda x: float(x))/df[ccy+" prices"]
+        df[yaxis_line] = df[yaxis_line].apply(lambda x: round(x,2))
+        df[yaxis_bar] = df[yaxis_bar].apply(lambda x: float(x))/df[ccy+" prices"]
+        df[yaxis_bar] = df[yaxis_bar].apply(lambda x: round(x,2))
+
     
     chart.add_yaxis_bar_chart(
         series_name=yaxis_bar,
@@ -154,7 +164,8 @@ def generate_combo_chart(df, title, yaxis_bar, yaxis_line, xaxis=None, xaxis_zoo
     return chart
 
 def generate_line_chart_multiline(df, title, yaxis, xaxis=None, xaxis_zoom_start=None, xaxis_zoom_end=None, ccy=None):
-    
+    df = df.round(2)
+
     if len(yaxis) == 1:
         return generate_line_chart(df, title, xaxis, yaxis, xaxis_zoom_start, xaxis_zoom_end, ccy)
     
@@ -192,8 +203,9 @@ def generate_line_chart_multiline(df, title, yaxis, xaxis=None, xaxis_zoom_start
     for line in yaxis:
         if line not in df:
             continue
-        if ccy == 'ETH' and "prices" in df:
-            df[line] = df[line].apply(lambda x: float(x))/df["prices"]
+        if ccy in ccy_options:
+            df[line] = df[line].apply(lambda x: float(x))/df[ccy+" prices"]
+            df[line] = df[line].apply(lambda x: round(x,2))
         chart.add_yaxis(
             color="rgb(74,144,226)",
             series_name=line,
@@ -201,5 +213,42 @@ def generate_line_chart_multiline(df, title, yaxis, xaxis=None, xaxis_zoom_start
         )
     return chart
 
-def donut(labels=[], values=[], colors=['rgb(74, 144, 226)', 'rgb(255, 148, 0)', 'rgb(255, 0, 0)','rgb(99, 210, 142)', 'rgb(6, 4, 4)']):
+def generate_standard_table(df):
+    df = df.round(2)
+    html_table='<div class="table-container">' + df.to_html() + '</div>'
+    print(html_table)
+    style_css = """
+    <style>
+        div.table-container {
+            width: 100%;
+            overflow: scroll;
+        }
+
+        table.dataframe {
+        width: 100%;
+        background-color: rgb(35,58,79);
+        border-collapse: collapse;
+        border-width: 2px;
+        border-color: rgb(17,29,40);
+        border-style: solid;
+        color: white;
+        font-size: 14px;
+        }
+
+        table.dataframe td, table.dataframe th {
+        text-align: left;
+        border-top: 2px rgb(17,29,40) solid;
+        border-bottom: 2px rgb(17,29,40) solid;
+        padding: 3px;
+        white-space:nowrap;
+        }
+
+        table.dataframe thead {
+            color: rgb(215,215,215);
+        background-color: rgb(17,29,40);
+        }
+    </style>"""
+    return style_css + html_table
+
+def generate_donut_chart(labels=[], values=[], colors=['rgb(74, 144, 226)', 'rgb(255, 148, 0)', 'rgb(255, 0, 0)','rgb(99, 210, 142)', 'rgb(6, 4, 4)']):
     return go.Figure(data=[go.Pie(labels=labels, values=values, hole=.5, marker_colors = colors)])

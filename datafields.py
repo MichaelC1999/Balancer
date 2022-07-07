@@ -1,5 +1,6 @@
 from subgrounds.subgrounds import Subgrounds
 import subgrounds.subgraph
+import json
 
 from datetime import datetime
 import pandas as pd
@@ -7,9 +8,14 @@ import streamlit as st
 from utilities.coingecko import get_coin_market_cap, get_coin_market_chart
 
 ETH_HISTORY = get_coin_market_chart('ethereum')
-ETH_HISTORY_DF = pd.DataFrame(ETH_HISTORY['prices'], columns=['timestamp', 'prices'])[:-1]
+ETH_HISTORY_DF = pd.DataFrame(ETH_HISTORY['prices'], columns=['timestamp', 'ETH prices'])[:-1]
 ETH_HISTORY_DF['Days'] = (ETH_HISTORY_DF['timestamp']/86400000).astype(int)
 ETH_HISTORY_DF=ETH_HISTORY_DF.set_index('Days')
+
+BTC_HISTORY = get_coin_market_chart('bitcoin')
+BTC_HISTORY_DF = pd.DataFrame(BTC_HISTORY['prices'], columns=['timestamp', 'BTC prices'])[:-1]
+BTC_HISTORY_DF['Days'] = (BTC_HISTORY_DF['timestamp']/86400000).astype(int)
+BTC_HISTORY_DF=BTC_HISTORY_DF.set_index('Days')
 
 @st.experimental_memo
 def get_financial_snapshots(_subgraph, _sg):
@@ -49,20 +55,24 @@ def get_financial_snapshots(_subgraph, _sg):
     df["Daily veBAL Holder Revenue"] = df["Daily Protocol Revenue"] * .75
     df["Cumulative veBAL Holder Revenue"] = df['Cumulative Protocol Side Revenue'] * .75
     df['Historical Yield'] = df['Total Value Locked']/df['Daily Total Revenue']
-    df["Base Yield"] = round(df["Daily Supply Revenue"]/df["Total Value Locked"] * 100,2)
+    df["Base Yield"] = df["Daily Supply Revenue"]/df["Total Value Locked"] * 100
     df = df.iloc[::-1]
 
-    df = df.join(ETH_HISTORY_DF['prices'], on="Days")
+    df['USD prices'] = 1
+    df = df.join(ETH_HISTORY_DF['ETH prices'], on="Days")
+    df = df.join(BTC_HISTORY_DF['BTC prices'], on="Days")
+
     df = df.set_index("id")
-    df = df.round(2)
     print(ETH_HISTORY_DF, df.index, df)
     return df
 
 @st.cache(hash_funcs={subgrounds.subgraph.object.Object: lambda _: None}, allow_output_mutation=True)
 def merge_financials_dfs(_dfs):
     df_return = pd.concat(_dfs, join='outer', axis=0).fillna(0)
-    df_return = df_return.groupby('id').sum().round(2)
-    df_return['prices'] = _dfs[0]["prices"]
+    df_return = df_return.groupby('id').sum()
+    df_return['USD prices'] = 1
+    df_return['ETH prices'] = _dfs[0]["ETH prices"]
+    df_return['BTC prices'] = _dfs[0]["BTC prices"]
     df_return["Date"] = _dfs[0]["Date"]
     df_return["timestamp"] = _dfs[0]["timestamp"]
 
@@ -99,22 +109,27 @@ def get_usage_metrics_df(_subgraph, _sg, latest_schema=True):
         'usageMetricsDailySnapshots_timestamp':'timestamp'
         })
     df['Days'] = df['usageMetricsDailySnapshots_id'].astype(int)
-    
-    df = df.join(ETH_HISTORY_DF['prices'], on="Days")
+    df['USD prices'] = 1
+    df = df.join(ETH_HISTORY_DF['ETH prices'], on="Days")
+    df = df.join(BTC_HISTORY_DF['BTC prices'], on="Days")
+
     df = df.iloc[::-1]
 
     df['id'] = df['usageMetricsDailySnapshots_id']
-    df = df.round(2)
     df = df.set_index("id")
     return df
 
 @st.cache(hash_funcs={subgrounds.subgraph.object.Object: lambda _: None}, allow_output_mutation=True)
 def merge_usage_dfs(_dfs):
     df_return = pd.concat(_dfs, join='outer', axis=0).fillna(0)
-    df_return = df_return.groupby('id').sum().round(2)
+    df_return = df_return.groupby('id').sum()
     df_return["Date"] = _dfs[0]["Date"]
     df_return["timestamp"] = _dfs[0]["timestamp"]
-    df_return['prices'] = _dfs[0]["prices"]
+
+    df_return['ETH prices'] = _dfs[0]["ETH prices"]
+    df_return['BTC prices'] = _dfs[0]["BTC prices"]
+    df_return['USD prices'] = 1
+
     print(df_return)
     return df_return
 
@@ -188,10 +203,11 @@ def get_recent_24h_pool_snapshots(_subgraph, _sg):
     df['Date'] = df['timestamp'].apply(lambda x: datetime.utcfromtimestamp(int(x)))
     df['Days'] = df['timestamp'].apply(lambda x: int(int(x)/86400))
     df = df.set_index("Days")
-    df['Total Value Locked'] = df['Total Value Locked'].round(2)
-    df['Daily Volume'] = df['Daily Volume'].round(2)
-    df["Base Yield"] = round(df["Daily Supply Revenue"]/df["Total Value Locked"] * 100, 2)
-    df = df.join(ETH_HISTORY_DF['prices'], on="Days")
+    df["Base Yield"] = df["Daily Supply Revenue"]/df["Total Value Locked"] * 100
+    df['USD prices'] = 1
+    df = df.join(ETH_HISTORY_DF['ETH prices'], on="Days")
+    df = df.join(BTC_HISTORY_DF['BTC prices'], on="Days")
+
     df = df.set_index("id")
 
     return df
@@ -219,7 +235,10 @@ def get_swaps_df(_subgraph,_sg,sort_value,window_start=0,tx_above=0,tx_below=100
         event.hash,
         event.__getattribute__('from'),
         event.to,
-        event.pool.name,
+        event.tokenIn.name,
+        event.tokenOut.name,
+        event.tokenIn.id,
+        event.tokenOut.id,
         event.amountInUSD,
         event.amountOutUSD
     ])
@@ -232,16 +251,20 @@ def get_swaps_df(_subgraph,_sg,sort_value,window_start=0,tx_above=0,tx_below=100
         'swaps_hash':'Transaction Hash',
         'swaps_from':'From',
         'swaps_to':'To',
-        'swaps_pool_name':'Pool',
+        'swaps_tokenIn_name': 'Token In Name',
+        'swaps_tokenOut_name': 'Token Out Name',
+        'swaps_tokenIn_id': 'Token In',
+        'swaps_tokenOut_id': 'Token Out',
         'swaps_amountInUSD':'Amount In',
         'swaps_amountOutUSD':'Amount Out',
         'swaps_timestamp':'timestamp'
     })
-    df['Amount In'] = df['Amount In'].round(2)
-    df['Amount Out'] = df['Amount Out'].round(2)
 
+    df['Pool'] = df['Token In Name'] + '/' + df['Token Out Name']
     df['Days'] = df['timestamp'].apply(lambda x: int(int(x)/86400))
-    df = df.join(ETH_HISTORY_DF['prices'], on="Days")
+    df['USD prices'] = 1
+    df = df.join(ETH_HISTORY_DF['ETH prices'], on="Days")
+    df = df.join(BTC_HISTORY_DF['BTC prices'], on="Days")
     return df
 
 @st.experimental_memo
@@ -272,7 +295,9 @@ def get_30d_withdraws(_subgraph, _sg):
         slug+'_amountUSD':'Amount'
     })
     df['Days'] = df['timestamp'].apply(lambda x: int(int(x)/86400))
-    df = df.join(ETH_HISTORY_DF['prices'], on="Days")
+    df['USD prices'] = 1
+    df = df.join(ETH_HISTORY_DF['ETH prices'], on="Days")
+    df = df.join(BTC_HISTORY_DF['BTC prices'], on="Days")
 
     return df
 
@@ -351,7 +376,6 @@ def get_veBAL_unlocks_df(_veBAL_subgraph, _sg):
         'votingEscrowLocks_lockedBalance':'Amount To Unlock',
         'votingEscrowLocks_unlockTime':'timestamp'
         })
-    df['Amount To Unlock'] = df['Amount To Unlock'].round(2)
     print(df)
     return df
 
@@ -375,8 +399,10 @@ def get_veBAL_locked_df(_veBAL_subgraph, _sg):
         'votingEscrowLocks_unlockTime':'timestamp'
         })
     df['Days'] = df['timestamp'].apply(lambda x: int(int(x)/86400))
-    df = df.join(ETH_HISTORY_DF['prices'], on="Days")
-    df['Locked Balance'] = df['Locked Balance'].round(2)
+    df['USD prices'] = 1
+    df = df.join(ETH_HISTORY_DF['ETH prices'], on="Days")
+    df = df.join(BTC_HISTORY_DF['BTC prices'], on="Days")
+
     print(df)
     return df
 
@@ -430,8 +456,10 @@ def get_pool_timeseries_df(_subgraph, _sg, pool):
     df["Daily veBAL Holder Revenue"] = df['Daily Protocol Revenue'] * .75
     df = df.set_index("Days")
     df = df.iloc[::-1]
-    df["Base Yield"] = round(df["Daily Supply Revenue"]/df["Total Value Locked"] * 100,2)
-    df = df.join(ETH_HISTORY_DF['prices'], on="Days")
+    df["Base Yield"] = df["Daily Supply Revenue"]/df["Total Value Locked"] * 100
+    df['USD prices'] = 1
+    df = df.join(ETH_HISTORY_DF['ETH prices'], on="Days")
+    df = df.join(BTC_HISTORY_DF['BTC prices'], on="Days")
     df = df.set_index("id")
 
     return df

@@ -5,6 +5,17 @@ import requests
 
 BASE_URL = "https://api.coingecko.com/api/v3/"
 
+
+def get_token_info(network, token_addr):
+    url = BASE_URL+'coins/'+ network +'/contract/'+token_addr
+    resp = requests.get(url)
+    if resp.status_code == 200:
+        result = resp.json()
+    else:
+        print('Request Error: {}: invalid token name'.format(resp.status_code))
+        result = {}
+    return result
+
 def get_coin_market_chart(token_name):
     url = BASE_URL+"coins/{}/market_chart?vs_currency=usd&days=max&interval=daily".format(token_name)
     resp = requests.get(url)
@@ -25,7 +36,7 @@ def get_coin_market_cap(token_name):
     return df
 
 def get_price(token_name):
-    url = 'https://api.coingecko.com/api/v3/simple/price?ids={}&vs_currencies=usd'.format(token_name)
+    url = BASE_URL+'simple/price?ids={}&vs_currencies=usd'.format(token_name)
     resp = requests.get(url)
     if resp.status_code == 200:
         result = resp.json()
@@ -35,7 +46,7 @@ def get_price(token_name):
         return 0
 
 def get_market_data(token_name):
-    url = 'https://api.coingecko.com/api/v3/coins/{}?market_data=true&community_data=false&developer_data=false'.format(token_name)
+    url = BASE_URL+'coins/{}?market_data=true&community_data=false&developer_data=false'.format(token_name)
     resp = requests.get(url)
     result_dict = {}
     if resp.status_code == 200:

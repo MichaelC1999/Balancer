@@ -1,6 +1,7 @@
 from utilities.coingecko import get_market_data, get_coin_market_chart
 from subgrounds.subgrounds import Subgrounds
 from streamlit_autorefresh import st_autorefresh
+import streamlit.components.v1 as components
 from datetime import datetime
 import requests
 import streamlit as st
@@ -17,7 +18,7 @@ from config import *
 from pyecharts import options as opts
 import math
 
-
+pd.options.display.float_format = '{:.2f}'.format
 
 with open('./treasuryTokens.json', 'r') as f:
   treasuryTokens = json.load(f)
@@ -87,8 +88,7 @@ def buttons_chart(key, state_val):
 def buttons_ccy(state_type, element, state_val):
     buttons = st.container()
     with buttons:
-        st.button('USD', key=element+'USD', on_click=(lambda: set_ccy(state_type,element,'USD')))
-        st.button('ETH', key=element+'ETH', on_click=(lambda: set_ccy(state_type,element,'ETH')))
+        st.selectbox("Currency", ccy_options, key='set_ccy'+state_type+element, on_change=(lambda: set_ccy(state_type,element)))
     return buttons
 
 def change_tab(tab):
@@ -139,9 +139,8 @@ def set_chart_window(chart, start, end):
     state_val = st.session_state['chart_states'][chart]
     st.session_state['chart_states'][chart] = {'window_start': start, 'window_end': end, 'ccy': state_val['ccy']}
 
-def set_ccy(state_type, element, ccy):
-    state_val = st.session_state[state_type + '_states'][element]
-    st.session_state[state_type + '_states'][element]['ccy'] = ccy
+def set_ccy(state_type, element):
+    st.session_state[state_type + '_states'][element]['ccy'] = st.session_state['set_ccy'+state_type+element]
 
 def set_agg(key, frame):
     st.session_state['chart_states'][key]['agg'] = frame
@@ -210,12 +209,7 @@ mainnet_liquidityPools_df = None
 matic_liquidityPools_df = None
 arbitrum_liquidityPools_df = None
 liquidityPools_df = None
-top_10 = None
-mainnet_top_10_rev = None
-matic_top_10_rev = None
-arbitrum_top_10_rev = None
 
-top_10_rev = None
 
 data_loading.text(f'[Every {REFRESH_INTERVAL_SEC} seconds] Loading data... done!')
 
@@ -650,12 +644,13 @@ elif st.session_state['tab'] == 'Liquidity Providers':
         buttons_ccy('table','Pool Snaps', state_val)
 
         all_24h_pool_snapshots_df.index = range(1, len(all_24h_pool_snapshots_df) + 1)
-        if state_val['ccy'] == 'ETH':
-            all_24h_pool_snapshots_df['Total Value Locked'] = all_24h_pool_snapshots_df['Total Value Locked']/all_24h_pool_snapshots_df['prices']
-            all_24h_pool_snapshots_df['Daily Volume'] = all_24h_pool_snapshots_df['Daily Volume']/all_24h_pool_snapshots_df['prices']
+        if state_val['ccy'] in ccy_options:
+            all_24h_pool_snapshots_df['Total Value Locked'] = all_24h_pool_snapshots_df['Total Value Locked']/all_24h_pool_snapshots_df[state_val['ccy'] + ' prices']
+            all_24h_pool_snapshots_df['Daily Volume'] = all_24h_pool_snapshots_df['Daily Volume']/all_24h_pool_snapshots_df[state_val['ccy'] + ' prices']
             all_24h_pool_snapshots_df = all_24h_pool_snapshots_df.sort_values(by=state_val['rank_col'],ascending=False)
 
-        st.dataframe(all_24h_pool_snapshots_df[['Pool Name', 'Total Value Locked', 'Daily Volume', 'Base Yield']][:10])
+        top_10_table = charts.generate_standard_table(all_24h_pool_snapshots_df[['Pool Name', 'Total Value Locked', 'Daily Volume', 'Base Yield']][:10])
+        st.markdown(top_10_table, unsafe_allow_html=True)
 
     with col2:
         st.subheader('Largest Depositors')
@@ -665,9 +660,8 @@ elif st.session_state['tab'] == 'Liquidity Providers':
         st.subheader('Largest Withdraws in Previous 30 days in ' + ' (' + state_val['ccy'] + ')')
         withdrawals_30d_df.index = range(1, len(withdrawals_30d_df) + 1)
         buttons_ccy('table','Withdrawls', state_val)
-        # if state_val['ccy'] == 'ETH':
-        #     withdrawals_30d_df
-        st.dataframe(withdrawals_30d_df[['Pool', 'Wallet', 'Amount']][:10])
+        largest_withdraws = charts.generate_standard_table(withdrawals_30d_df[['Pool', 'Wallet', 'Amount']][:10])
+        st.markdown(largest_withdraws, unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns(3)
 
@@ -683,7 +677,7 @@ elif st.session_state['tab'] == 'Liquidity Providers':
             xaxis_start = int(financial_df.index[0])
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
-            st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
+            st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': '%'}
         
         state_val = st.session_state['chart_states'][key]
         
@@ -751,11 +745,14 @@ elif st.session_state['tab'] == 'Traders':
         buttons_chart(key, state_val)
         buttons_ccy('table',key, state_val)
         largest_df.index = range(1, len(largest_df) + 1)
-        largest_df = largest_df.rename(columns={'Amount In':'Amount'})
-        if state_val['ccy'] == 'ETH':
-            largest_df['Amount'] = largest_df['Amount']/largest_df['prices']
-            largest_df = largest_df.sort_values(by='Amount',ascending=False)
-        st.dataframe(largest_df[['Date', 'Pool', 'Amount', 'Transaction Hash']][:20])
+        amount_col = 'Amount (' + state_val['ccy'] + ')'
+        largest_df = largest_df.rename(columns={'Amount In':amount_col, 'Date String': 'Tx Date'})
+        if state_val['ccy'] in ccy_options:
+            largest_df[amount_col] = round(largest_df[amount_col]/largest_df[state_val['ccy'] + ' prices'],2)
+            largest_df = largest_df.sort_values(by=amount_col,ascending=False)
+
+        largest_tx_table = charts.generate_standard_table(largest_df[['Pool', amount_col, 'Tx Date', 'Transaction Hash']][:20])        
+        st.markdown(largest_tx_table, unsafe_allow_html=True)
 
     with col3:
         st.subheader('Highest Volume Tokens 30d')
@@ -1056,7 +1053,7 @@ elif st.session_state['tab'] == 'By Pool':
     with col3:
         if len(swaps_by_range) > 0:
             st.subheader("Transactions By Size (Last 14 days)")
-            tx_by_size=charts.donut(labels, swaps_by_range, ['rgb(74, 144, 226)', 'rgb(255, 148, 0)', 'rgb(255, 0, 0)','rgb(99, 210, 142)', 'rgb(6, 4, 4)'])
+            tx_by_size=charts.generate_donut_chart(labels, swaps_by_range, ['rgb(74, 144, 226)', 'rgb(255, 148, 0)', 'rgb(255, 0, 0)','rgb(99, 210, 142)', 'rgb(6, 4, 4)'])
             st.plotly_chart(tx_by_size, use_container_width=True)
         else:
             st.subheader('No swaps in the last ' + str(days_range) + ' days.')
