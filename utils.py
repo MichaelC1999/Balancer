@@ -2,7 +2,7 @@ import pytz
 import datetime
 from pyecharts.types import JsCode
 
-ccy_options=['USD', 'ETH', 'BTC', 'BNB', 'SOL', 'MATIC']
+ccy_options=['USD', 'ETH', 'BTC', 'BAL']
 
 # Get the start and end date denominated in number of days since epoch
 def get_xaxis_zoom_range(xaxis, start, end):

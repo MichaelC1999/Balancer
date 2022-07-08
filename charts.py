@@ -216,7 +216,6 @@ def generate_line_chart_multiline(df, title, yaxis, xaxis=None, xaxis_zoom_start
 def generate_standard_table(df):
     df = df.round(2)
     html_table='<div class="table-container">' + df.to_html() + '</div>'
-    print(html_table)
     style_css = """
     <style>
         div.table-container {

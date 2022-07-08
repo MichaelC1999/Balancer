@@ -11,11 +11,25 @@ ETH_HISTORY = get_coin_market_chart('ethereum')
 ETH_HISTORY_DF = pd.DataFrame(ETH_HISTORY['prices'], columns=['timestamp', 'ETH prices'])[:-1]
 ETH_HISTORY_DF['Days'] = (ETH_HISTORY_DF['timestamp']/86400000).astype(int)
 ETH_HISTORY_DF=ETH_HISTORY_DF.set_index('Days')
+ETH_LATEST_VALUE = ETH_HISTORY_DF.iloc[-1]['ETH prices']
 
 BTC_HISTORY = get_coin_market_chart('bitcoin')
 BTC_HISTORY_DF = pd.DataFrame(BTC_HISTORY['prices'], columns=['timestamp', 'BTC prices'])[:-1]
 BTC_HISTORY_DF['Days'] = (BTC_HISTORY_DF['timestamp']/86400000).astype(int)
 BTC_HISTORY_DF=BTC_HISTORY_DF.set_index('Days')
+BTC_LATEST_VALUE = BTC_HISTORY_DF.iloc[-1]['BTC prices']
+
+BAL_HISTORY = get_coin_market_chart('balancer')
+BAL_HISTORY_DF = pd.DataFrame(BAL_HISTORY['prices'], columns=['timestamp', 'BAL prices'])[:-1]
+BAL_HISTORY_DF['Days'] = (BAL_HISTORY_DF['timestamp']/86400000).astype(int)
+BAL_HISTORY_DF=BAL_HISTORY_DF.set_index('Days')
+BAL_LATEST_VALUE = BAL_HISTORY_DF.iloc[-1]['BAL prices']
+
+USD_LATEST_VALUE = 1
+
+def get_ccy_current_value(ccy):
+    return globals()[ccy+'_LATEST_VALUE']
+
 
 @st.experimental_memo
 def get_financial_snapshots(_subgraph, _sg):
@@ -61,9 +75,9 @@ def get_financial_snapshots(_subgraph, _sg):
     df['USD prices'] = 1
     df = df.join(ETH_HISTORY_DF['ETH prices'], on="Days")
     df = df.join(BTC_HISTORY_DF['BTC prices'], on="Days")
+    df = df.join(BAL_HISTORY_DF['BAL prices'], on="Days")
 
     df = df.set_index("id")
-    print(ETH_HISTORY_DF, df.index, df)
     return df
 
 @st.cache(hash_funcs={subgrounds.subgraph.object.Object: lambda _: None}, allow_output_mutation=True)
@@ -73,6 +87,8 @@ def merge_financials_dfs(_dfs):
     df_return['USD prices'] = 1
     df_return['ETH prices'] = _dfs[0]["ETH prices"]
     df_return['BTC prices'] = _dfs[0]["BTC prices"]
+    df_return['BAL prices'] = _dfs[0]["BAL prices"]
+
     df_return["Date"] = _dfs[0]["Date"]
     df_return["timestamp"] = _dfs[0]["timestamp"]
 
@@ -112,7 +128,7 @@ def get_usage_metrics_df(_subgraph, _sg, latest_schema=True):
     df['USD prices'] = 1
     df = df.join(ETH_HISTORY_DF['ETH prices'], on="Days")
     df = df.join(BTC_HISTORY_DF['BTC prices'], on="Days")
-
+    df = df.join(BAL_HISTORY_DF['BAL prices'], on="Days")
     df = df.iloc[::-1]
 
     df['id'] = df['usageMetricsDailySnapshots_id']
@@ -125,7 +141,7 @@ def merge_usage_dfs(_dfs):
     df_return = df_return.groupby('id').sum()
     df_return["Date"] = _dfs[0]["Date"]
     df_return["timestamp"] = _dfs[0]["timestamp"]
-
+    df_return['BAL prices'] = _dfs[0]["BAL prices"]
     df_return['ETH prices'] = _dfs[0]["ETH prices"]
     df_return['BTC prices'] = _dfs[0]["BTC prices"]
     df_return['USD prices'] = 1
@@ -134,19 +150,30 @@ def merge_usage_dfs(_dfs):
     return df_return
 
 @st.experimental_memo
-def get_pools_df(_subgraph, _sg, chain="mainnet"):
+def get_pools_df(_subgraph, _sg, chain="mainnet", sort_col=None, _conditions_list=[]):
+    if sort_col is None:
+        sort_col=_subgraph.LiquidityPool.totalValueLockedUSD
+    _conditions_list.append(_subgraph.LiquidityPool.id != '0x0000000000000000000000000000000000000000')
     liquidityPools = _subgraph.Query.liquidityPools(
-        first=100,
-        orderBy=_subgraph.LiquidityPool.totalValueLockedUSD,
+        first=1000,
+        orderBy=sort_col,
         orderDirection='desc',
-        where=[_subgraph.LiquidityPool.id != '0x0000000000000000000000000000000000000000']
+        where=_conditions_list
     )
     liquidityPools_df = _sg.query_df([
         liquidityPools.id,
         liquidityPools.name,
-        liquidityPools.totalValueLockedUSD
+        liquidityPools.totalValueLockedUSD,
+        liquidityPools.cumulativeVolumeUSD,
+        liquidityPools.createdTimestamp
     ])
-    liquidityPools_df = liquidityPools_df.rename(columns={'liquidityPools_totalValueLockedUSD':'Total Value Locked', 'liquidityPools_name':'Pool', 'liquidityPools_id': 'id'})
+    liquidityPools_df = liquidityPools_df.rename(columns={
+        'liquidityPools_totalValueLockedUSD':'Total Value Locked',
+        'liquidityPools_cumulativeVolumeUSD':'Cumulative Volume USD',        
+        'liquidityPools_name':'Pool',
+        'liquidityPools_id': 'id',
+        'liquidityPools_createdTimestamp': 'Created Timestamp'
+    })
     liquidityPools_df['pool_label'] = liquidityPools_df['Pool'] + ' - ' + liquidityPools_df['id'] + ' - ' + chain
     return liquidityPools_df
 
@@ -207,7 +234,7 @@ def get_recent_24h_pool_snapshots(_subgraph, _sg):
     df['USD prices'] = 1
     df = df.join(ETH_HISTORY_DF['ETH prices'], on="Days")
     df = df.join(BTC_HISTORY_DF['BTC prices'], on="Days")
-
+    df = df.join(BAL_HISTORY_DF['BAL prices'], on="Days")
     df = df.set_index("id")
 
     return df
@@ -265,6 +292,7 @@ def get_swaps_df(_subgraph,_sg,sort_value,window_start=0,tx_above=0,tx_below=100
     df['USD prices'] = 1
     df = df.join(ETH_HISTORY_DF['ETH prices'], on="Days")
     df = df.join(BTC_HISTORY_DF['BTC prices'], on="Days")
+    df = df.join(BAL_HISTORY_DF['BAL prices'], on="Days")
     return df
 
 @st.experimental_memo
@@ -298,7 +326,7 @@ def get_30d_withdraws(_subgraph, _sg):
     df['USD prices'] = 1
     df = df.join(ETH_HISTORY_DF['ETH prices'], on="Days")
     df = df.join(BTC_HISTORY_DF['BTC prices'], on="Days")
-
+    df = df.join(BAL_HISTORY_DF['BAL prices'], on="Days")
     return df
 
 @st.experimental_memo
@@ -402,7 +430,7 @@ def get_veBAL_locked_df(_veBAL_subgraph, _sg):
     df['USD prices'] = 1
     df = df.join(ETH_HISTORY_DF['ETH prices'], on="Days")
     df = df.join(BTC_HISTORY_DF['BTC prices'], on="Days")
-
+    df = df.join(BAL_HISTORY_DF['BAL prices'], on="Days")
     print(df)
     return df
 
@@ -428,27 +456,33 @@ def get_pool_data_df(_subgraph, _sg, pool):
     return df
 
 @st.experimental_memo
-def get_pool_timeseries_df(_subgraph, _sg, pool):
-    poolId = pool.split(' - ')[1]
+def get_pool_timeseries_df(_subgraph, _sg, _conditions_list=[]):
     liquidityPoolSnapshots = _subgraph.Query.liquidityPoolDailySnapshots(
-    where=[_subgraph.LiquidityPoolDailySnapshot.pool == poolId],
+    where=_conditions_list,
+    first=1000,
     orderBy=_subgraph.LiquidityPoolDailySnapshot.timestamp,
     orderDirection='desc'
     ) 
     df = _sg.query_df([
         liquidityPoolSnapshots.id,
-        liquidityPoolSnapshots.timestamp,
+        liquidityPoolSnapshots.pool.id,
+        liquidityPoolSnapshots.pool.name,
         liquidityPoolSnapshots.totalValueLockedUSD,
         liquidityPoolSnapshots.dailyVolumeUSD,
         liquidityPoolSnapshots.dailySupplySideRevenueUSD,
-        liquidityPoolSnapshots.dailyProtocolSideRevenueUSD
+        liquidityPoolSnapshots.dailyProtocolSideRevenueUSD,
+        liquidityPoolSnapshots.cumulativeVolumeUSD,
+        liquidityPoolSnapshots.timestamp
     ])
     df = df.rename(columns={
         'liquidityPoolDailySnapshots_id':'id',
+        'liquidityPoolDailySnapshots_pool_id':'Pool ID',
+        'liquidityPoolDailySnapshots_pool_name':'Pool Name',
+        'liquidityPoolDailySnapshots_totalValueLockedUSD':'Total Value Locked',
         'liquidityPoolDailySnapshots_dailySupplySideRevenueUSD':'Daily Supply Revenue',
         'liquidityPoolDailySnapshots_dailyProtocolSideRevenueUSD':'Daily Protocol Revenue',
-        'liquidityPoolDailySnapshots_totalValueLockedUSD':'Total Value Locked',
         'liquidityPoolDailySnapshots_dailyVolumeUSD':'Daily Volume',
+        'liquidityPoolDailySnapshots_cumulativeVolumeUSD':'Cumulative Volume USD',
         'liquidityPoolDailySnapshots_timestamp':'timestamp'
         })
     df['Date'] = df['timestamp'].apply(lambda x: datetime.utcfromtimestamp(int(x)))
@@ -460,6 +494,7 @@ def get_pool_timeseries_df(_subgraph, _sg, pool):
     df['USD prices'] = 1
     df = df.join(ETH_HISTORY_DF['ETH prices'], on="Days")
     df = df.join(BTC_HISTORY_DF['BTC prices'], on="Days")
+    df = df.join(BAL_HISTORY_DF['BAL prices'], on="Days")
     df = df.set_index("id")
 
     return df
