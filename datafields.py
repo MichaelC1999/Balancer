@@ -30,7 +30,6 @@ USD_LATEST_VALUE = 1
 def get_ccy_current_value(ccy):
     return globals()[ccy+'_LATEST_VALUE']
 
-
 @st.experimental_memo
 def get_financial_snapshots(_subgraph, _sg):
     financialSnapshot = _subgraph.Query.financialsDailySnapshots(
@@ -193,51 +192,7 @@ def get_top_x_liquidityPools(_subgraph, _sg, field, limit):
     ])
     liquidityPools_df = liquidityPools_df.rename(columns={'liquidityPools_' + field: field, 'liquidityPools_name':'Pool', 'liquidityPools_id': 'id'})
     liquidityPools_df['pool_label'] = liquidityPools_df['Pool'] + ' - ' + liquidityPools_df['id']
-    print(liquidityPools_df)
     return liquidityPools_df
-
-@st.experimental_memo
-def get_recent_24h_pool_snapshots(_subgraph, _sg):
-    # Because there is no "Days Since Epoch" field on the snapshot and snapshot timestamps can vary on when they start/end, select snapshots with timestamps in a 36 hr window
-    # Snapshots that appear more than once will be filtered out
-    # The time window is specifically over 24 hrs ago because snapshots within the last 24 hrs maybe the current in-progress snapshot and may innacurately reflect the average daily statistic
-    now = int(int(datetime.timestamp(datetime.now())))
-    timestamp_gt_60hrs = now - 60*3600
-    timestamp_lt_24hrs = now - 24*3600
-    liquidityPoolSnapshots = _subgraph.Query.liquidityPoolDailySnapshots(
-        orderBy=_subgraph.LiquidityPoolDailySnapshot.id,
-        where={"timestamp_gt": timestamp_gt_60hrs, "timestamp_lt": timestamp_lt_24hrs}
-    ) 
-    df = _sg.query_df([
-        liquidityPoolSnapshots.id,
-        liquidityPoolSnapshots.pool.id,
-        liquidityPoolSnapshots.pool.name,
-        liquidityPoolSnapshots.timestamp,
-        liquidityPoolSnapshots.totalValueLockedUSD,
-        liquidityPoolSnapshots.dailyVolumeUSD,
-        liquidityPoolSnapshots.dailySupplySideRevenueUSD,
-    ])
-    df = df.rename(columns={
-        'liquidityPoolDailySnapshots_id':'id',
-        'liquidityPoolDailySnapshots_pool_id':'Pool ID',
-        'liquidityPoolDailySnapshots_pool_name':'Pool Name',
-        'liquidityPoolDailySnapshots_dailySupplySideRevenueUSD':'Daily Supply Revenue',
-        'liquidityPoolDailySnapshots_totalValueLockedUSD':'Total Value Locked',
-        'liquidityPoolDailySnapshots_dailyVolumeUSD':'Daily Volume',
-        'liquidityPoolDailySnapshots_timestamp':'timestamp'
-        })
-    df = df.drop_duplicates(subset="Pool ID")
-    df['Date'] = df['timestamp'].apply(lambda x: datetime.utcfromtimestamp(int(x)))
-    df['Days'] = df['timestamp'].apply(lambda x: int(int(x)/86400))
-    df = df.set_index("Days")
-    df["Base Yield"] = df["Daily Supply Revenue"]/df["Total Value Locked"] * 100
-    df['USD prices'] = 1
-    df = df.join(ETH_HISTORY_DF['ETH prices'], on="Days")
-    df = df.join(BTC_HISTORY_DF['BTC prices'], on="Days")
-    df = df.join(BAL_HISTORY_DF['BAL prices'], on="Days")
-    df = df.set_index("id")
-
-    return df
 
 @st.cache(hash_funcs={subgrounds.subgraph.object.Object: lambda _: None}, allow_output_mutation=True)
 def merge_dfs(_dfs, sort_col):
@@ -329,36 +284,6 @@ def get_30d_withdraws(_subgraph, _sg):
     df = df.join(BAL_HISTORY_DF['BAL prices'], on="Days")
     return df
 
-@st.experimental_memo
-def get_events_df(_subgraph, _sg,event_name='Deposit'):
-    now = int(datetime.timestamp(datetime.now()))
-    withinMonthTimestamp = now - (86400 * 30)
-    slug = event_name.lower()+'s'
-    event = _subgraph.Query.__getattribute__(slug)(
-        orderBy=_subgraph.__getattribute__(event_name).amountUSD,
-        orderDirection='desc',
-        first=100,
-        where={"timestamp_gt": withinMonthTimestamp}
-    )
-    df = _sg.query_df([
-        event.timestamp,
-        event.hash,
-        event.__getattribute__('from'),
-        event.to,
-        event.pool.name,
-        event.amountUSD
-    ])
-    df = df.rename(columns={
-        slug+'_hash':'Transaction Hash',
-        slug+'_from':'From',
-        slug+'_to':'To',
-        slug+'_pool_name':'Pool',
-        slug+'_amountUSD':'Amount'
-    })
-    # df.drop(columns=[slug+'_timestamp'], axis=1, inplace=True)
-    # df['Amount'] = df['Amount'].apply(lambda x: "${:.1f}k".format((x/1000)))
-    return df
-
 @st.cache(hash_funcs={subgrounds.subgraph.object.Object: lambda _: None}, allow_output_mutation=True)
 def get_revenue_df(_df):
     mcap_df = get_coin_market_cap('balancer')
@@ -390,7 +315,7 @@ def get_veBAL_unlocks_df(_veBAL_subgraph, _sg):
         where={"unlockTime_gt": int(datetime.timestamp(now))},
         orderBy='unlockTime',
         orderDirection='desc',
-        first=1000
+        first=2000
     )
     df = _sg.query_df([
       veBAL_data.unlockTime,
@@ -414,7 +339,7 @@ def get_veBAL_locked_df(_veBAL_subgraph, _sg):
         where={"unlockTime_lt": int(datetime.timestamp(now))},
         orderBy='unlockTime',
         orderDirection='asc',
-        first=1000
+        first=2000
     )
     df = _sg.query_df([
       veBAL_data.unlockTime,
@@ -432,6 +357,25 @@ def get_veBAL_locked_df(_veBAL_subgraph, _sg):
     df = df.join(BTC_HISTORY_DF['BTC prices'], on="Days")
     df = df.join(BAL_HISTORY_DF['BAL prices'], on="Days")
     print(df)
+    return df
+
+@st.experimental_memo
+def get_veBAL_top_wallets(_veBAL_subgraph, _sg):
+    veBAL_data = _veBAL_subgraph.Query.votingEscrowLocks(
+        orderBy='lockedBalance',
+        orderDirection='desc',
+        first=20
+    )
+    df = _sg.query_df([
+        veBAL_data.user.id,
+        veBAL_data.lockedBalance
+    ])
+
+    df = df.rename(columns={
+        'votingEscrowLocks_lockedBalance':'Locked Balance',
+        'votingEscrowLocks_user_id':'Address'
+        })
+
     return df
 
 @st.experimental_memo
@@ -457,6 +401,7 @@ def get_pool_data_df(_subgraph, _sg, pool):
 
 @st.experimental_memo
 def get_pool_timeseries_df(_subgraph, _sg, _conditions_list=[]):
+    # print('Pool conditions list', _conditions_list)
     liquidityPoolSnapshots = _subgraph.Query.liquidityPoolDailySnapshots(
     where=_conditions_list,
     first=1000,
