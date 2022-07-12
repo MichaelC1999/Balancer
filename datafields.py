@@ -79,7 +79,7 @@ def get_financial_snapshots(_subgraph, _sg):
     df = df.set_index("id")
     return df
 
-@st.cache(hash_funcs={subgrounds.subgraph.object.Object: lambda _: None}, allow_output_mutation=True)
+@st.cache(allow_output_mutation=True)
 def merge_financials_dfs(_dfs):
     df_return = pd.concat(_dfs, join='outer', axis=0).fillna(0)
     df_return = df_return.groupby('id').sum()
@@ -134,7 +134,7 @@ def get_usage_metrics_df(_subgraph, _sg, latest_schema=True):
     df = df.set_index("id")
     return df
 
-@st.cache(hash_funcs={subgrounds.subgraph.object.Object: lambda _: None}, allow_output_mutation=True)
+@st.cache(allow_output_mutation=True)
 def merge_usage_dfs(_dfs):
     df_return = pd.concat(_dfs, join='outer', axis=0).fillna(0)
     df_return = df_return.groupby('id').sum()
@@ -149,15 +149,16 @@ def merge_usage_dfs(_dfs):
     return df_return
 
 @st.experimental_memo
-def get_pools_df(_subgraph, _sg, chain="mainnet", sort_col=None, _conditions_list=[]):
+def get_pools_df(_subgraph, _sg, chain="mainnet", sort_col=None, conditions_list="{}"):
+    conditions_list = json.loads(conditions_list)
     if sort_col is None:
         sort_col=_subgraph.LiquidityPool.totalValueLockedUSD
-    _conditions_list.append(_subgraph.LiquidityPool.id != '0x0000000000000000000000000000000000000000')
+    conditions_list['id_not'] = '0x0000000000000000000000000000000000000000'
     liquidityPools = _subgraph.Query.liquidityPools(
         first=1000,
         orderBy=sort_col,
         orderDirection='desc',
-        where=_conditions_list
+        where=conditions_list
     )
     liquidityPools_df = _sg.query_df([
         liquidityPools.id,
@@ -183,7 +184,7 @@ def get_top_x_liquidityPools(_subgraph, _sg, field, limit):
         first=limit,
         orderBy=_subgraph.LiquidityPool.__getattribute__(field),
         orderDirection='desc',
-        where=[_subgraph.LiquidityPool.id != '0x0000000000000000000000000000000000000000']
+        where={'id_not': '0x0000000000000000000000000000000000000000'}
     )
     liquidityPools_df = _sg.query_df([
         liquidityPools.id,
@@ -202,9 +203,9 @@ def merge_dfs(_dfs, sort_col):
 
 @st.experimental_memo
 def get_swaps_df(_subgraph,_sg,sort_value,window_start=0,tx_above=0,tx_below=1000000000, pool_id=None):
-    conditions_list = [_subgraph.Swap.timestamp > window_start, _subgraph.Swap.amountInUSD > tx_above, _subgraph.Swap.amountInUSD < tx_below]
+    conditions_list = {'timestamp_gt': window_start, 'amountInUSD_gt': tx_above, 'amountInUSD_lt': tx_below}
     if pool_id is not None:
-        conditions_list.append(_subgraph.Swap.pool == pool_id)
+        conditions_list['pool'] = pool_id
     event = _subgraph.Query.swaps(
         orderBy=_subgraph.Swap.__getattribute__(sort_value),
         orderDirection='desc',
@@ -400,10 +401,10 @@ def get_pool_data_df(_subgraph, _sg, pool):
     return df
 
 @st.experimental_memo
-def get_pool_timeseries_df(_subgraph, _sg, _conditions_list=[]):
-    # print('Pool conditions list', _conditions_list)
+def get_pool_timeseries_df(_subgraph, _sg, conditions_list=""):
+    conditions_list = json.loads(conditions_list)
     liquidityPoolSnapshots = _subgraph.Query.liquidityPoolDailySnapshots(
-    where=_conditions_list,
+    where=conditions_list,
     first=1000,
     orderBy=_subgraph.LiquidityPoolDailySnapshot.timestamp,
     orderDirection='desc'
@@ -430,6 +431,8 @@ def get_pool_timeseries_df(_subgraph, _sg, _conditions_list=[]):
         'liquidityPoolDailySnapshots_cumulativeVolumeUSD':'Cumulative Volume USD',
         'liquidityPoolDailySnapshots_timestamp':'timestamp'
         })
+    if len(df.index) == 0:
+        return 'QUERY RETURNED NO DATA'
     df['Date'] = df['timestamp'].apply(lambda x: datetime.utcfromtimestamp(int(x)))
     df['Days'] = df['timestamp'].apply(lambda x: int(int(x)/86400))
     df["Daily veBAL Holder Revenue"] = df['Daily Protocol Revenue'] * .75

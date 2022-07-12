@@ -320,7 +320,7 @@ if st.session_state['tab'] == 'Main':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
-        
+        st.subheader(key)
         state_val = st.session_state['chart_states'][key]
         chart_window_input(key, state_val)
         ccy_selection('chart',key, state_val)
@@ -340,7 +340,7 @@ if st.session_state['tab'] == 'Main':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
-        
+        st.subheader(key)
         state_val = st.session_state['chart_states'][key]
         
         chart_window_input(key, state_val)
@@ -362,6 +362,7 @@ if st.session_state['tab'] == 'Main':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': None}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         
@@ -385,6 +386,7 @@ if st.session_state['tab'] == 'Main':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': None}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         
@@ -405,6 +407,7 @@ if st.session_state['tab'] == 'Main':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         
@@ -427,16 +430,17 @@ if st.session_state['tab'] == 'Main':
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
         
         state_val = st.session_state['chart_states'][key]
+        st.subheader(key)
         
-        chart_window_input(key, state_val)
-        ccy_selection('chart',key, state_val)
+        # chart_window_input(key, state_val)
+        # ccy_selection('chart',key, state_val)
                 
-        chart = charts.generate_line_chart(financial_df, key, yaxis='Protocol Controlled Value', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val['ccy'])
-        st_pyecharts(
-            chart=chart.LINE_CHART,
-            height='450px',
-            key= key,
-        )
+        # chart = charts.generate_line_chart(financial_df, key, yaxis='Protocol Controlled Value', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val['ccy'])
+        # st_pyecharts(
+        #     chart=chart.LINE_CHART,
+        #     height='450px',
+        #     key= key,
+        # )
 
     col1, col2, col3 = st.columns(3)
 
@@ -449,6 +453,7 @@ if st.session_state['tab'] == 'Main':
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'veBAL'}
         
+        st.subheader('veBAL ' + key)
         state_val = st.session_state['chart_states'][key]
         
         chart_window_input(key, state_val)
@@ -468,6 +473,7 @@ if st.session_state['tab'] == 'Main':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         chart_window_input(key, state_val)
@@ -486,6 +492,8 @@ if st.session_state['tab'] == 'Main':
         now = int(datetime.datetime.timestamp(datetime.datetime.now()))
         if key not in st.session_state['chart_states']:
             st.session_state['chart_states'][key] = {'window_start': now, 'window_end': now + 365*86400, 'agg': 'D', 'ccy': "veBAL"}
+        st.subheader('veBAL ' + key)
+        
         state_val = st.session_state['chart_states'][key]
         buttons = st.container()
         with buttons:
@@ -533,6 +541,7 @@ if st.session_state['tab'] == 'Main':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': '%'}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         
@@ -552,6 +561,7 @@ if st.session_state['tab'] == 'Main':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': '%'}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         
@@ -572,6 +582,7 @@ if st.session_state['tab'] == 'Main':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': '%'}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         chart_window_input(key, state_val)
@@ -603,12 +614,17 @@ elif st.session_state['tab'] == 'Liquidity Providers':
     now = int(int(datetime.datetime.timestamp(datetime.datetime.now())))
     timestamp_gt_60hrs = now - 60*3600
     timestamp_lt_24hrs = now - 24*3600
-
-    mainnet_24h_pool_snapshots_df = datafields.get_pool_timeseries_df(balancerV2_mainnet, sg, _conditions_list=[balancerV2_mainnet.LiquidityPoolDailySnapshot.timestamp > timestamp_gt_60hrs, balancerV2_mainnet.LiquidityPoolDailySnapshot.timestamp < timestamp_lt_24hrs])
-    matic_24h_pool_snapshots_df = datafields.get_pool_timeseries_df(balancerV2_matic, sg, _conditions_list=[balancerV2_matic.LiquidityPoolDailySnapshot.timestamp > timestamp_gt_60hrs, balancerV2_matic.LiquidityPoolDailySnapshot.timestamp < timestamp_lt_24hrs])
-    arbitrum_24h_pool_snapshots_df = datafields.get_pool_timeseries_df(balancerV2_arbitrum, sg, _conditions_list=[balancerV2_arbitrum.LiquidityPoolDailySnapshot.timestamp > timestamp_gt_60hrs, balancerV2_arbitrum.LiquidityPoolDailySnapshot.timestamp < timestamp_lt_24hrs])
-
-    all_24h_pool_snapshots_df = datafields.merge_dfs([mainnet_24h_pool_snapshots_df, matic_24h_pool_snapshots_df, arbitrum_24h_pool_snapshots_df], st.session_state['table_states']['Pool Snaps']['rank_col'])
+    dfs_to_merge = []
+    mainnet_24h_pool_snapshots_df = datafields.get_pool_timeseries_df(balancerV2_mainnet, sg, conditions_list=json.dumps({"timestamp_gt": timestamp_gt_60hrs, "timestamp_lt": timestamp_lt_24hrs}))
+    if isinstance(mainnet_24h_pool_snapshots_df, str) is False:
+        dfs_to_merge.append(mainnet_24h_pool_snapshots_df)
+    matic_24h_pool_snapshots_df = datafields.get_pool_timeseries_df(balancerV2_matic, sg, conditions_list=json.dumps({"timestamp_gt": timestamp_gt_60hrs, "timestamp_lt": timestamp_lt_24hrs}))
+    if isinstance(matic_24h_pool_snapshots_df, str) is False:
+        dfs_to_merge.append(matic_24h_pool_snapshots_df)
+    arbitrum_24h_pool_snapshots_df = datafields.get_pool_timeseries_df(balancerV2_arbitrum, sg, conditions_list=json.dumps({"timestamp_gt": timestamp_gt_60hrs, "timestamp_lt": timestamp_lt_24hrs}))
+    if isinstance(arbitrum_24h_pool_snapshots_df, str) is False:
+        dfs_to_merge.append(arbitrum_24h_pool_snapshots_df)
+    all_24h_pool_snapshots_df = datafields.merge_dfs(dfs_to_merge, st.session_state['table_states']['Pool Snaps']['rank_col'])
 
     mainnet_top_10_rev = datafields.get_top_x_liquidityPools(balancerV2_mainnet, sg, 'cumulativeTotalRevenueUSD', 10)
     matic_top_10_rev = datafields.get_top_x_liquidityPools(balancerV2_matic, sg, 'cumulativeTotalRevenueUSD', 10)
@@ -749,62 +765,69 @@ elif st.session_state['tab'] == 'Traders':
 
     col1, col2, col3 = st.columns(3)
 
-    with col1:
+    with fragile(col1):
         if 'now' not in st.session_state:
             st.session_state['now'] = datetime.datetime.now()
         pools_accounted_for = {}
+        dfs_to_merge = []
         timestamp_30d_ago = int(datetime.datetime.timestamp(st.session_state['now'])) - 86400 * 30
         timestamp_25d_ago = int(datetime.datetime.timestamp(st.session_state['now'])) - 86400 * 25
-        conditions_list = [balancerV2_mainnet.LiquidityPoolDailySnapshot.timestamp > timestamp_30d_ago, balancerV2_mainnet.LiquidityPoolDailySnapshot.timestamp < timestamp_25d_ago]
-        earliest_5d_snapshots_mainnet = datafields.get_pool_timeseries_df(balancerV2_mainnet, sg, _conditions_list=conditions_list)
+        conditions_list = json.dumps({"timestamp_gt": timestamp_30d_ago, "timestamp_lt": timestamp_25d_ago})
+        earliest_5d_snapshots_mainnet = datafields.get_pool_timeseries_df(balancerV2_mainnet, sg, conditions_list=conditions_list)
+        if isinstance(earliest_5d_snapshots_mainnet, str) is False:
+            dfs_to_merge.append(earliest_5d_snapshots_mainnet)
+        earliest_5d_snapshots_arbitrum = datafields.get_pool_timeseries_df(balancerV2_arbitrum, sg, conditions_list=conditions_list)
+        if isinstance(earliest_5d_snapshots_arbitrum, str) is False:
+            dfs_to_merge.append(earliest_5d_snapshots_arbitrum)
+        earliest_5d_snapshots_matic = datafields.get_pool_timeseries_df(balancerV2_matic, sg, conditions_list=conditions_list)
+        if isinstance(earliest_5d_snapshots_matic, str) is False:
+            dfs_to_merge.append(earliest_5d_snapshots_matic)
+        earliest_5d_snapshots = datafields.merge_dfs(dfs_to_merge, 'timestamp')
+        earliest_5d_snapshots = pd.DataFrame({'Pool ID': earliest_5d_snapshots.groupby('Pool ID')['Pool ID'].first(), 'Pool': earliest_5d_snapshots.groupby('Pool ID')['Pool Name'].first(), 'Starting Volume': earliest_5d_snapshots.groupby('Pool ID')['Cumulative Volume USD'].last(), 'Current Volume': 0, 'Volume 30d': 0})
         
-        conditions_list = [balancerV2_arbitrum.LiquidityPoolDailySnapshot.timestamp > timestamp_30d_ago, balancerV2_arbitrum.LiquidityPoolDailySnapshot.timestamp < timestamp_25d_ago]
-        earliest_5d_snapshots_arbitrum = datafields.get_pool_timeseries_df(balancerV2_arbitrum, sg, _conditions_list=conditions_list)
-
-        conditions_list = [balancerV2_matic.LiquidityPoolDailySnapshot.timestamp > timestamp_30d_ago, balancerV2_matic.LiquidityPoolDailySnapshot.timestamp < timestamp_25d_ago]
-        earliest_5d_snapshots_matic = datafields.get_pool_timeseries_df(balancerV2_matic, sg, _conditions_list=conditions_list)
-
-        earliest_5d_snapshots = datafields.merge_dfs([earliest_5d_snapshots_mainnet, earliest_5d_snapshots_matic, earliest_5d_snapshots_arbitrum], 'timestamp')
-        earliest_5d_snapshots = pd.DataFrame({'Pool ID': earliest_5d_snapshots.groupby('Pool ID')['Pool ID'].first(), 'Pool': earliest_5d_snapshots.groupby('Pool ID')['Pool Name'].first(), 'Starting Volume': earliest_5d_snapshots.groupby('Pool ID')['Cumulative Volume USD'].last(), 'Current Volume': 0, 'Volume Difference': 0})
-        
-        recently_created_mainnet=datafields.get_pools_df(balancerV2_mainnet, sg, chain="mainnet", sort_col='createdTimestamp', _conditions_list=[balancerV2_mainnet.LiquidityPool.createdTimestamp > timestamp_25d_ago])
-        recently_created_matic=datafields.get_pools_df(balancerV2_matic, sg, chain="matic", sort_col='createdTimestamp', _conditions_list=[balancerV2_matic.LiquidityPool.createdTimestamp > timestamp_25d_ago])
-        recently_created_arbitrum=datafields.get_pools_df(balancerV2_arbitrum, sg, chain="arbitrum", sort_col='createdTimestamp', _conditions_list=[balancerV2_arbitrum.LiquidityPool.createdTimestamp > timestamp_25d_ago])
+        recently_created_mainnet=datafields.get_pools_df(balancerV2_mainnet, sg, chain="mainnet", sort_col='createdTimestamp', conditions_list=json.dumps({"createdTimestamp_gt": timestamp_25d_ago}))
+        recently_created_matic=datafields.get_pools_df(balancerV2_matic, sg, chain="matic", sort_col='createdTimestamp', conditions_list=json.dumps({"createdTimestamp_gt": timestamp_25d_ago}))
+        recently_created_arbitrum=datafields.get_pools_df(balancerV2_arbitrum, sg, chain="arbitrum", sort_col='createdTimestamp', conditions_list=json.dumps({"createdTimestamp_gt": timestamp_25d_ago}))
         
         recently_created = datafields.merge_dfs([recently_created_mainnet, recently_created_matic, recently_created_arbitrum], 'Created Timestamp')
-        recently_created = pd.DataFrame({'Pool ID': recently_created.groupby('id')['id'].first(), 'Pool': recently_created.groupby('id')['Pool'].first(), 'Starting Volume': 0, 'Current Volume': recently_created.groupby('id')['Cumulative Volume USD'].max(), 'Volume Difference': 0})
+        recently_created = pd.DataFrame({'Pool ID': recently_created.groupby('id')['id'].first(), 'Pool': recently_created.groupby('id')['Pool'].first(), 'Starting Volume': 0, 'Current Volume': recently_created.groupby('id')['Cumulative Volume USD'].max(), 'Volume 30d': 0})
         
         pool_volumes = datafields.merge_dfs([earliest_5d_snapshots,recently_created], 'Current Volume')
 
         current_pools = pool_volumes['Pool ID'].tolist()
 
-        conditions_list = [balancerV2_mainnet.LiquidityPoolDailySnapshot.timestamp > timestamp_25d_ago, balancerV2_mainnet.LiquidityPoolDailySnapshot.pool.id not in current_pools, balancerV2_mainnet.LiquidityPoolDailySnapshot.dailyVolumeUSD > 50000]
-        unchecked_pool_snapshots_mainnet = datafields.get_pool_timeseries_df(balancerV2_mainnet, sg, _conditions_list=conditions_list)
+        conditions_list = json.dumps({"timestamp_gt": timestamp_25d_ago, "pool_": {"id_not_in": current_pools}, "dailyVolumeUSD_gt": 50000})
         
-        conditions_list = [balancerV2_arbitrum.LiquidityPoolDailySnapshot.timestamp > timestamp_25d_ago, balancerV2_arbitrum.LiquidityPoolDailySnapshot.pool.id not in current_pools, balancerV2_arbitrum.LiquidityPoolDailySnapshot.dailyVolumeUSD > 50000]
-        unchecked_pool_snapshots_arbitrum = datafields.get_pool_timeseries_df(balancerV2_arbitrum, sg, _conditions_list=conditions_list)
-
-        conditions_list = [balancerV2_matic.LiquidityPoolDailySnapshot.timestamp > timestamp_25d_ago, balancerV2_matic.LiquidityPoolDailySnapshot.pool.id not in current_pools, balancerV2_matic.LiquidityPoolDailySnapshot.dailyVolumeUSD > 50000]
-        unchecked_pool_snapshots_matic = datafields.get_pool_timeseries_df(balancerV2_matic, sg, _conditions_list=conditions_list)
-
-        unchecked_pool_snapshots = datafields.merge_dfs([unchecked_pool_snapshots_mainnet, unchecked_pool_snapshots_matic, unchecked_pool_snapshots_arbitrum], 'timestamp')
-        unchecked_pool_snapshots = pd.DataFrame({'Pool ID': unchecked_pool_snapshots.groupby('Pool ID')['Pool ID'].first(),'Pool': unchecked_pool_snapshots.groupby('Pool ID')['Pool Name'].first(),'Starting Volume': unchecked_pool_snapshots.groupby('Pool ID')['Cumulative Volume USD'].last(), 'Current Volume': 0, 'Volume Difference': 0})
+        dfs_to_merge = []
+        unchecked_pool_snapshots_mainnet = datafields.get_pool_timeseries_df(balancerV2_mainnet, sg, conditions_list=conditions_list)
+        if isinstance(unchecked_pool_snapshots_mainnet, str) is False:
+            dfs_to_merge.append(unchecked_pool_snapshots_mainnet)
+        unchecked_pool_snapshots_arbitrum = datafields.get_pool_timeseries_df(balancerV2_arbitrum, sg, conditions_list=conditions_list)
+        if isinstance(unchecked_pool_snapshots_arbitrum, str) is False:
+            dfs_to_merge.append(unchecked_pool_snapshots_arbitrum)
+        unchecked_pool_snapshots_matic = datafields.get_pool_timeseries_df(balancerV2_matic, sg, conditions_list=conditions_list)
+        if isinstance(unchecked_pool_snapshots_matic, str) is False:
+            dfs_to_merge.append(unchecked_pool_snapshots_matic)
         
 
-        current_volume_mainnet=datafields.get_pools_df(balancerV2_mainnet, sg, chain="mainnet", sort_col='cumulativeVolumeUSD', _conditions_list=[])
-        current_volume_matic=datafields.get_pools_df(balancerV2_matic, sg, chain="matic", sort_col='cumulativeVolumeUSD', _conditions_list=[])
-        current_volume_arbitrum=datafields.get_pools_df(balancerV2_arbitrum, sg, chain="arbitrum", sort_col='cumulativeVolumeUSD', _conditions_list=[])
+        current_volume_mainnet=datafields.get_pools_df(balancerV2_mainnet, sg, chain="mainnet", sort_col='cumulativeVolumeUSD', conditions_list="{}")
+        current_volume_matic=datafields.get_pools_df(balancerV2_matic, sg, chain="matic", sort_col='cumulativeVolumeUSD', conditions_list="{}")
+        current_volume_arbitrum=datafields.get_pools_df(balancerV2_arbitrum, sg, chain="arbitrum", sort_col='cumulativeVolumeUSD', conditions_list="{}")
         
         current_volume = datafields.merge_dfs([current_volume_mainnet, current_volume_matic, current_volume_arbitrum], 'Created Timestamp')
-        current_volume = pd.DataFrame({'Pool ID': current_volume.groupby('id')['id'].first(),'Pool': current_volume.groupby('id')['Pool'].first(), 'Starting Volume': current_volume.groupby('id')['Cumulative Volume USD'].max(), 'Current Volume': current_volume.groupby('id')['Cumulative Volume USD'].max(), 'Volume Difference': 0})
-        
-        pool_volumes = pd.concat([pool_volumes,unchecked_pool_snapshots,current_volume], join='outer', axis=0).fillna(0)
+        current_volume = pd.DataFrame({'Pool ID': current_volume.groupby('id')['id'].first(),'Pool': current_volume.groupby('id')['Pool'].first(), 'Starting Volume': current_volume.groupby('id')['Cumulative Volume USD'].max(), 'Current Volume': current_volume.groupby('id')['Cumulative Volume USD'].max(), 'Volume 30d': 0})
+        pool_volumes_srcs = [pool_volumes, current_volume]
+        if len(dfs_to_merge) != 0:
+            unchecked_pool_snapshots = datafields.merge_dfs(dfs_to_merge, 'timestamp')
+            unchecked_pool_snapshots = pd.DataFrame({'Pool ID': unchecked_pool_snapshots.groupby('Pool ID')['Pool ID'].first(),'Pool': unchecked_pool_snapshots.groupby('Pool ID')['Pool Name'].first(),'Starting Volume': unchecked_pool_snapshots.groupby('Pool ID')['Cumulative Volume USD'].last(), 'Current Volume': 0, 'Volume 30d': 0})
+            pool_volumes_srcs.append(unchecked_pool_snapshots)
+        pool_volumes = pd.concat(pool_volumes_srcs, join='outer', axis=0).fillna(0)
         pool_volumes = pd.DataFrame({
             'Pool ID': pool_volumes.groupby('Pool ID')['Pool ID'].first(),
             'Pool': pool_volumes.groupby('Pool ID')['Pool'].first(),
             'Starting Volume': pool_volumes.groupby('Pool ID')['Starting Volume'].first(),
             'Current Volume': pool_volumes.groupby('Pool ID')['Current Volume'].last(),
-            'Volume Difference': 0,
+            'Volume 30d': 0,
             'USD prices': 1,
             'ETH prices': datafields.get_ccy_current_value('ETH'),
             'BTC prices': datafields.get_ccy_current_value('BTC'),
@@ -812,7 +835,7 @@ elif st.session_state['tab'] == 'Traders':
         })
         
         
-        pool_volumes['Volume Difference'] = pool_volumes['Current Volume'] - pool_volumes['Starting Volume']
+        pool_volumes['Volume 30d'] = pool_volumes['Current Volume'] - pool_volumes['Starting Volume']
         
         copy_df = pool_volumes.copy()
         key = 'Pools by Volume Last 30 Days'
@@ -823,11 +846,11 @@ elif st.session_state['tab'] == 'Traders':
         ccy_selection('table',key, state_val)
 
         if state_val['ccy'] in ccy_options:
-            copy_df['Volume Difference'] = round(pool_volumes['Volume Difference']/pool_volumes[state_val['ccy'] + ' prices'],2)
+            copy_df['Volume 30d'] = round(pool_volumes['Volume 30d']/pool_volumes[state_val['ccy'] + ' prices'],2)
 
-        copy_df = copy_df.sort_values('Volume Difference', ascending=False)[:20]
+        copy_df = copy_df.sort_values('Volume 30d', ascending=False)[:20]
         copy_df.index = range(1, len(copy_df) + 1)
-        pools_highest_volume = charts.generate_standard_table(copy_df[['Pool', 'Volume Difference']][:20])        
+        pools_highest_volume = charts.generate_standard_table(copy_df[['Pool', 'Volume 30d']][:20])        
         st.markdown(pools_highest_volume, unsafe_allow_html=True)
 
     with col2:
@@ -868,7 +891,8 @@ elif st.session_state['tab'] == 'Traders':
                 xaxis_start = xaxis_end - 365
 
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
-        
+        st.subheader(key)
+
         state_val = st.session_state['chart_states'][key]
         chart_window_input(key, state_val)
         tx_by_day_combo = charts.generate_combo_chart(tx_df, key, 'Amount', 'Median', xaxis='Days', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'])
@@ -935,6 +959,7 @@ elif st.session_state['tab'] == 'veBAL':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'veBAL'}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         
@@ -955,6 +980,7 @@ elif st.session_state['tab'] == 'veBAL':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         chart_window_input(key, state_val)
@@ -973,6 +999,8 @@ elif st.session_state['tab'] == 'veBAL':
         now = int(datetime.datetime.timestamp(datetime.datetime.now()))
         if key not in st.session_state['chart_states']:
             st.session_state['chart_states'][key] = {'window_start': now, 'window_end': now + 365*86400, 'agg': 'D', 'ccy': "veBAL"}
+        st.subheader('veBAL '+key)
+       
         state_val = st.session_state['chart_states'][key]
         buttons = st.container()
         with buttons:
@@ -1037,7 +1065,7 @@ elif st.session_state['tab'] == 'By Pool':
 
     pool_data = datafields.get_pool_data_df(subgraph_to_use, sg, st.session_state['pool_label'])
     pool = st.session_state['pool_label']
-    pool_timeseries = datafields.get_pool_timeseries_df(subgraph_to_use, sg, _conditions_list=[subgraph_to_use.LiquidityPoolDailySnapshot.pool == pool.split(' - ')[1]])
+    pool_timeseries = datafields.get_pool_timeseries_df(subgraph_to_use, sg, conditions_list=json.dumps({"pool": pool.split(' - ')[1]}))
     pool_timeseries['timestamp'] = pool_timeseries['timestamp']/86400
 
     days_range = 14
@@ -1094,6 +1122,7 @@ elif st.session_state['tab'] == 'By Pool':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         
@@ -1113,6 +1142,7 @@ elif st.session_state['tab'] == 'By Pool':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         
@@ -1132,6 +1162,7 @@ elif st.session_state['tab'] == 'By Pool':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         
@@ -1156,6 +1187,7 @@ elif st.session_state['tab'] == 'By Pool':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         
@@ -1174,6 +1206,7 @@ elif st.session_state['tab'] == 'By Pool':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         
@@ -1198,6 +1231,7 @@ elif st.session_state['tab'] == 'By Pool':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         
@@ -1246,6 +1280,7 @@ elif st.session_state['tab'] == 'By Chain':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         
@@ -1265,6 +1300,7 @@ elif st.session_state['tab'] == 'By Chain':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         
@@ -1284,6 +1320,7 @@ elif st.session_state['tab'] == 'By Chain':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': None}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         
@@ -1307,6 +1344,7 @@ elif st.session_state['tab'] == 'By Chain':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         
@@ -1326,6 +1364,7 @@ elif st.session_state['tab'] == 'By Chain':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': '%'}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         
@@ -1346,6 +1385,7 @@ elif st.session_state['tab'] == 'By Chain':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': None}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         
@@ -1365,6 +1405,7 @@ elif st.session_state['tab'] == 'By Chain':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         
@@ -1385,6 +1426,7 @@ elif st.session_state['tab'] == 'By Chain':
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
+        st.subheader(key)
         
         state_val = st.session_state['chart_states'][key]
         
