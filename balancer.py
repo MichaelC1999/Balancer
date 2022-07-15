@@ -732,7 +732,39 @@ elif st.session_state['tab'] == 'Traders':
     matic_largest_swaps_window_df = datafields.get_swaps_df(balancerV2_matic, sg, 'amountInUSD', window_start=st.session_state['table_states']['Largest Trades']['window_start']*86400)
     arbitrum_largest_swaps_window_df = datafields.get_swaps_df(balancerV2_arbitrum, sg, 'amountInUSD', window_start=st.session_state['table_states']['Largest Trades']['window_start']*86400)
     largest_df = datafields.merge_dfs([mainnet_largest_swaps_window_df, matic_largest_swaps_window_df, arbitrum_largest_swaps_window_df], 'Amount In')    
-    
+
+    if 'now' not in st.session_state:
+        st.session_state['now'] = datetime.datetime.now()
+    dfs_to_merge = []
+    timestamp_30d_ago = int(datetime.datetime.timestamp(st.session_state['now'])) - 86400 * 30
+    conditions_list = json.dumps({"timestamp_gt": timestamp_30d_ago, "dailyVolumeUSD_gt": 2000})
+    last_30d_snapshots_mainnet = datafields.get_pool_timeseries_df(balancerV2_mainnet, sg, conditions_list=conditions_list)
+    snapshot_token_volumes_mainnet = last_30d_snapshots_mainnet.groupby('id')["Daily Volume By Token"].apply(list).to_dict()
+    last_30d_snapshots_mainnet = last_30d_snapshots_mainnet.groupby('id').first()
+    if isinstance(last_30d_snapshots_mainnet, str) is False:
+        dfs_to_merge.append(last_30d_snapshots_mainnet)
+    last_30d_snapshots_arbitrum = datafields.get_pool_timeseries_df(balancerV2_arbitrum, sg, conditions_list=conditions_list)
+    snapshot_token_volumes_arbitrum = last_30d_snapshots_arbitrum.groupby('id')["Daily Volume By Token"].apply(list).to_dict()
+    last_30d_snapshots_arbitrum = last_30d_snapshots_arbitrum.groupby('id').first()
+    if isinstance(last_30d_snapshots_arbitrum, str) is False:
+        dfs_to_merge.append(last_30d_snapshots_arbitrum)
+    last_30d_snapshots_matic = datafields.get_pool_timeseries_df(balancerV2_matic, sg, conditions_list=conditions_list)
+    snapshot_token_volumes_matic = last_30d_snapshots_matic.groupby('id')["Daily Volume By Token"].apply(list).to_dict()
+    last_30d_snapshots_matic = last_30d_snapshots_matic.groupby('id').first()
+    if isinstance(last_30d_snapshots_matic, str) is False:
+        dfs_to_merge.append(last_30d_snapshots_matic)
+    last_30d_snapshots = datafields.merge_dfs(dfs_to_merge, 'timestamp')
+
+    last_30d_snapshots_volumes = pd.DataFrame({
+        'Pool ID': last_30d_snapshots.groupby('Pool ID')['Pool ID'].first(),
+        'Pool': last_30d_snapshots.groupby('Pool ID')['Pool Name'].first(),
+        'Volume 30d': last_30d_snapshots.groupby('Pool ID')['Daily Volume'].sum(),
+        'USD prices': 1,
+        'ETH prices': datafields.get_ccy_current_value('ETH'),
+        'BTC prices': datafields.get_ccy_current_value('BTC'),
+        'BAL prices': datafields.get_ccy_current_value('BAL')
+        }).sort_values('Volume 30d', ascending=False)
+
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -766,78 +798,8 @@ elif st.session_state['tab'] == 'Traders':
     col1, col2, col3 = st.columns(3)
 
     with fragile(col1):
-        if 'now' not in st.session_state:
-            st.session_state['now'] = datetime.datetime.now()
-        pools_accounted_for = {}
-        dfs_to_merge = []
-        timestamp_30d_ago = int(datetime.datetime.timestamp(st.session_state['now'])) - 86400 * 30
-        timestamp_25d_ago = int(datetime.datetime.timestamp(st.session_state['now'])) - 86400 * 25
-        conditions_list = json.dumps({"timestamp_gt": timestamp_30d_ago, "timestamp_lt": timestamp_25d_ago})
-        earliest_5d_snapshots_mainnet = datafields.get_pool_timeseries_df(balancerV2_mainnet, sg, conditions_list=conditions_list)
-        if isinstance(earliest_5d_snapshots_mainnet, str) is False:
-            dfs_to_merge.append(earliest_5d_snapshots_mainnet)
-        earliest_5d_snapshots_arbitrum = datafields.get_pool_timeseries_df(balancerV2_arbitrum, sg, conditions_list=conditions_list)
-        if isinstance(earliest_5d_snapshots_arbitrum, str) is False:
-            dfs_to_merge.append(earliest_5d_snapshots_arbitrum)
-        earliest_5d_snapshots_matic = datafields.get_pool_timeseries_df(balancerV2_matic, sg, conditions_list=conditions_list)
-        if isinstance(earliest_5d_snapshots_matic, str) is False:
-            dfs_to_merge.append(earliest_5d_snapshots_matic)
-        earliest_5d_snapshots = datafields.merge_dfs(dfs_to_merge, 'timestamp')
-        earliest_5d_snapshots = pd.DataFrame({'Pool ID': earliest_5d_snapshots.groupby('Pool ID')['Pool ID'].first(), 'Pool': earliest_5d_snapshots.groupby('Pool ID')['Pool Name'].first(), 'Starting Volume': earliest_5d_snapshots.groupby('Pool ID')['Cumulative Volume USD'].last(), 'Current Volume': 0, 'Volume 30d': 0})
         
-        recently_created_mainnet=datafields.get_pools_df(balancerV2_mainnet, sg, chain="mainnet", sort_col='createdTimestamp', conditions_list=json.dumps({"createdTimestamp_gt": timestamp_25d_ago}))
-        recently_created_matic=datafields.get_pools_df(balancerV2_matic, sg, chain="matic", sort_col='createdTimestamp', conditions_list=json.dumps({"createdTimestamp_gt": timestamp_25d_ago}))
-        recently_created_arbitrum=datafields.get_pools_df(balancerV2_arbitrum, sg, chain="arbitrum", sort_col='createdTimestamp', conditions_list=json.dumps({"createdTimestamp_gt": timestamp_25d_ago}))
-        
-        recently_created = datafields.merge_dfs([recently_created_mainnet, recently_created_matic, recently_created_arbitrum], 'Created Timestamp')
-        recently_created = pd.DataFrame({'Pool ID': recently_created.groupby('id')['id'].first(), 'Pool': recently_created.groupby('id')['Pool'].first(), 'Starting Volume': 0, 'Current Volume': recently_created.groupby('id')['Cumulative Volume USD'].max(), 'Volume 30d': 0})
-        
-        pool_volumes = datafields.merge_dfs([earliest_5d_snapshots,recently_created], 'Current Volume')
-
-        current_pools = pool_volumes['Pool ID'].tolist()
-
-        conditions_list = json.dumps({"timestamp_gt": timestamp_25d_ago, "pool_": {"id_not_in": current_pools}, "dailyVolumeUSD_gt": 50000})
-        
-        dfs_to_merge = []
-        unchecked_pool_snapshots_mainnet = datafields.get_pool_timeseries_df(balancerV2_mainnet, sg, conditions_list=conditions_list)
-        if isinstance(unchecked_pool_snapshots_mainnet, str) is False:
-            dfs_to_merge.append(unchecked_pool_snapshots_mainnet)
-        unchecked_pool_snapshots_arbitrum = datafields.get_pool_timeseries_df(balancerV2_arbitrum, sg, conditions_list=conditions_list)
-        if isinstance(unchecked_pool_snapshots_arbitrum, str) is False:
-            dfs_to_merge.append(unchecked_pool_snapshots_arbitrum)
-        unchecked_pool_snapshots_matic = datafields.get_pool_timeseries_df(balancerV2_matic, sg, conditions_list=conditions_list)
-        if isinstance(unchecked_pool_snapshots_matic, str) is False:
-            dfs_to_merge.append(unchecked_pool_snapshots_matic)
-        
-
-        current_volume_mainnet=datafields.get_pools_df(balancerV2_mainnet, sg, chain="mainnet", sort_col='cumulativeVolumeUSD', conditions_list="{}")
-        current_volume_matic=datafields.get_pools_df(balancerV2_matic, sg, chain="matic", sort_col='cumulativeVolumeUSD', conditions_list="{}")
-        current_volume_arbitrum=datafields.get_pools_df(balancerV2_arbitrum, sg, chain="arbitrum", sort_col='cumulativeVolumeUSD', conditions_list="{}")
-        
-        current_volume = datafields.merge_dfs([current_volume_mainnet, current_volume_matic, current_volume_arbitrum], 'Created Timestamp')
-        current_volume = pd.DataFrame({'Pool ID': current_volume.groupby('id')['id'].first(),'Pool': current_volume.groupby('id')['Pool'].first(), 'Starting Volume': current_volume.groupby('id')['Cumulative Volume USD'].max(), 'Current Volume': current_volume.groupby('id')['Cumulative Volume USD'].max(), 'Volume 30d': 0})
-        pool_volumes_srcs = [pool_volumes, current_volume]
-        if len(dfs_to_merge) != 0:
-            unchecked_pool_snapshots = datafields.merge_dfs(dfs_to_merge, 'timestamp')
-            unchecked_pool_snapshots = pd.DataFrame({'Pool ID': unchecked_pool_snapshots.groupby('Pool ID')['Pool ID'].first(),'Pool': unchecked_pool_snapshots.groupby('Pool ID')['Pool Name'].first(),'Starting Volume': unchecked_pool_snapshots.groupby('Pool ID')['Cumulative Volume USD'].last(), 'Current Volume': 0, 'Volume 30d': 0})
-            pool_volumes_srcs.append(unchecked_pool_snapshots)
-        pool_volumes = pd.concat(pool_volumes_srcs, join='outer', axis=0).fillna(0)
-        pool_volumes = pd.DataFrame({
-            'Pool ID': pool_volumes.groupby('Pool ID')['Pool ID'].first(),
-            'Pool': pool_volumes.groupby('Pool ID')['Pool'].first(),
-            'Starting Volume': pool_volumes.groupby('Pool ID')['Starting Volume'].first(),
-            'Current Volume': pool_volumes.groupby('Pool ID')['Current Volume'].last(),
-            'Volume 30d': 0,
-            'USD prices': 1,
-            'ETH prices': datafields.get_ccy_current_value('ETH'),
-            'BTC prices': datafields.get_ccy_current_value('BTC'),
-            'BAL prices': datafields.get_ccy_current_value('BAL')
-        })
-        
-        
-        pool_volumes['Volume 30d'] = pool_volumes['Current Volume'] - pool_volumes['Starting Volume']
-        
-        copy_df = pool_volumes.copy()
+        copy_df = last_30d_snapshots_volumes.copy()
         key = 'Pools by Volume Last 30 Days'
         if key not in st.session_state['table_states']:
             st.session_state['table_states'][key] = {'ccy': 'USD'}
@@ -846,7 +808,7 @@ elif st.session_state['tab'] == 'Traders':
         ccy_selection('table',key, state_val)
 
         if state_val['ccy'] in ccy_options:
-            copy_df['Volume 30d'] = round(pool_volumes['Volume 30d']/pool_volumes[state_val['ccy'] + ' prices'],2)
+            copy_df['Volume 30d'] = round(last_30d_snapshots_volumes['Volume 30d']/last_30d_snapshots_volumes[state_val['ccy'] + ' prices'],2)
 
         copy_df = copy_df.sort_values('Volume 30d', ascending=False)[:20]
         copy_df.index = range(1, len(copy_df) + 1)
@@ -874,8 +836,74 @@ elif st.session_state['tab'] == 'Traders':
         st.markdown(largest_tx_table, unsafe_allow_html=True)
 
     with col3:
-        st.subheader('Highest Volume Tokens 30d')
 
+        pools_to_get_token = last_30d_snapshots_volumes['Pool ID'].tolist()
+
+        tokens_list_mainnet = datafields.get_token_ids_by_pool_df(balancerV2_mainnet, sg, pool_id_array=pools_to_get_token)
+        tokens_list_arbitrum = datafields.get_token_ids_by_pool_df(balancerV2_arbitrum, sg, pool_id_array=pools_to_get_token)
+        tokens_list_matic = datafields.get_token_ids_by_pool_df(balancerV2_matic, sg, pool_id_array=pools_to_get_token)
+
+        tokens_list = datafields.merge_dfs([tokens_list_mainnet, tokens_list_arbitrum, tokens_list_matic], 'id')
+        pool_to_tokens_mapping_mainnet = tokens_list_mainnet.groupby('id')['Token IDs'].apply(list).to_dict()
+        pool_to_tokens_mapping_arbitrum = tokens_list_arbitrum.groupby('id')['Token IDs'].apply(list).to_dict()
+        pool_to_tokens_mapping_matic = tokens_list_matic.groupby('id')['Token IDs'].apply(list).to_dict()
+
+        token_id_list = tokens_list['Token IDs'].tolist()
+        monthly_volume_by_token_id = {}
+        for x in token_id_list:
+            monthly_volume_by_token_id[x] = 0
+
+        for snapshot_id, token_volumes in snapshot_token_volumes_mainnet.items():
+            pool_id = snapshot_id.split('-')[0]
+            if pool_id not in pool_to_tokens_mapping_mainnet:
+                print('pool invalid?', pool_id, token_volumes)
+                continue
+            current_tokens_arr = pool_to_tokens_mapping_mainnet[pool_id]
+            for idx, token in enumerate(current_tokens_arr):
+                monthly_volume_by_token_id[token] += token_volumes[idx]
+
+        for snapshot_id, token_volumes in snapshot_token_volumes_arbitrum.items():
+            pool_id = snapshot_id.split('-')[0]
+            if pool_id not in pool_to_tokens_mapping_arbitrum:
+                print('pool invalid?', pool_id, token_volumes)
+                continue
+            current_tokens_arr = pool_to_tokens_mapping_arbitrum[pool_id]
+            for idx, token in enumerate(current_tokens_arr):
+                monthly_volume_by_token_id[token] += token_volumes[idx]
+
+        for snapshot_id, token_volumes in snapshot_token_volumes_matic.items():
+            pool_id = snapshot_id.split('-')[0]
+            if pool_id not in pool_to_tokens_mapping_matic:
+                print('pool invalid?', pool_id, token_volumes)
+                continue
+            current_tokens_arr = pool_to_tokens_mapping_matic[pool_id]
+            for idx, token in enumerate(current_tokens_arr):
+                monthly_volume_by_token_id[token] += token_volumes[idx]
+
+        token_ids = list(monthly_volume_by_token_id.keys())
+        volumes = list(monthly_volume_by_token_id.values())
+        volume_by_token_df = pd.DataFrame({
+            'Token' : token_ids,
+            'Volume 30d' : volumes,
+            'USD prices': 1,
+            'ETH prices': datafields.get_ccy_current_value('ETH'),
+            'BTC prices': datafields.get_ccy_current_value('BTC'),
+            'BAL prices': datafields.get_ccy_current_value('BAL')})
+        copy_df = volume_by_token_df.copy()
+        key = 'Highest Volume Tokens 30d'
+        if key not in st.session_state['table_states']:
+            st.session_state['table_states'][key] = {'ccy': 'USD'}
+        state_val = st.session_state['table_states'][key]
+        st.subheader(key)
+        ccy_selection('table',key, state_val)
+
+        if state_val['ccy'] in ccy_options:
+            copy_df['Volume 30d'] = round(volume_by_token_df['Volume 30d']/volume_by_token_df[state_val['ccy'] + ' prices'],2)
+
+        copy_df = copy_df.sort_values('Volume 30d', ascending=False)[:20]
+        copy_df.index = range(1, len(copy_df) + 1)
+        pools_highest_volume = charts.generate_standard_table(copy_df[['Token', 'Volume 30d']][:20])        
+        st.markdown(pools_highest_volume, unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns(3)
 

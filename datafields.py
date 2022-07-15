@@ -177,6 +177,28 @@ def get_pools_df(_subgraph, _sg, chain="mainnet", sort_col=None, conditions_list
     liquidityPools_df['pool_label'] = liquidityPools_df['Pool'] + ' - ' + liquidityPools_df['id'] + ' - ' + chain
     return liquidityPools_df
 
+
+@st.experimental_memo
+def get_token_ids_by_pool_df(_subgraph, _sg, pool_id_array=[]):    
+    liquidityPools = _subgraph.Query.liquidityPools(
+        first=1000,
+        orderBy=_subgraph.LiquidityPool.totalValueLockedUSD,
+        orderDirection='desc',
+        where={'id_in': pool_id_array}
+    )
+    liquidityPools_df = _sg.query_df([
+        liquidityPools.id,
+        liquidityPools.totalValueLockedUSD,
+        liquidityPools.inputTokens.id,
+    ])
+    liquidityPools_df = liquidityPools_df.rename(columns={
+        'liquidityPools_id': 'id',
+        'liquidityPools_totalValueLockedUSD':'Total Value Locked',
+        'liquidityPools_inputTokens_id':'Token IDs',        
+    })
+    return liquidityPools_df
+
+
 @st.experimental_memo
 def get_top_x_liquidityPools(_subgraph, _sg, field, limit):
     # Field is the sort category, limit is the count of instances to return
@@ -405,7 +427,7 @@ def get_pool_timeseries_df(_subgraph, _sg, conditions_list=""):
     conditions_list = json.loads(conditions_list)
     liquidityPoolSnapshots = _subgraph.Query.liquidityPoolDailySnapshots(
     where=conditions_list,
-    first=1000,
+    first=5000,
     orderBy=_subgraph.LiquidityPoolDailySnapshot.timestamp,
     orderDirection='desc'
     ) 
@@ -415,34 +437,37 @@ def get_pool_timeseries_df(_subgraph, _sg, conditions_list=""):
         liquidityPoolSnapshots.pool.name,
         liquidityPoolSnapshots.totalValueLockedUSD,
         liquidityPoolSnapshots.dailyVolumeUSD,
+        liquidityPoolSnapshots.dailyVolumeByTokenUSD,
         liquidityPoolSnapshots.dailySupplySideRevenueUSD,
         liquidityPoolSnapshots.dailyProtocolSideRevenueUSD,
         liquidityPoolSnapshots.cumulativeVolumeUSD,
         liquidityPoolSnapshots.timestamp
     ])
     df = df.rename(columns={
-        'liquidityPoolDailySnapshots_id':'id',
-        'liquidityPoolDailySnapshots_pool_id':'Pool ID',
-        'liquidityPoolDailySnapshots_pool_name':'Pool Name',
-        'liquidityPoolDailySnapshots_totalValueLockedUSD':'Total Value Locked',
-        'liquidityPoolDailySnapshots_dailySupplySideRevenueUSD':'Daily Supply Revenue',
-        'liquidityPoolDailySnapshots_dailyProtocolSideRevenueUSD':'Daily Protocol Revenue',
-        'liquidityPoolDailySnapshots_dailyVolumeUSD':'Daily Volume',
-        'liquidityPoolDailySnapshots_cumulativeVolumeUSD':'Cumulative Volume USD',
-        'liquidityPoolDailySnapshots_timestamp':'timestamp'
+        "liquidityPoolDailySnapshots_id":"id",
+        "liquidityPoolDailySnapshots_pool_id":"Pool ID",
+        "liquidityPoolDailySnapshots_pool_name":"Pool Name",
+        "liquidityPoolDailySnapshots_totalValueLockedUSD":"Total Value Locked",
+        "liquidityPoolDailySnapshots_dailyVolumeByTokenUSD":"Daily Volume By Token",
+        "liquidityPoolDailySnapshots_dailySupplySideRevenueUSD":"Daily Supply Revenue",
+        "liquidityPoolDailySnapshots_dailyProtocolSideRevenueUSD":"Daily Protocol Revenue",
+        "liquidityPoolDailySnapshots_dailyVolumeUSD":"Daily Volume",
+        "liquidityPoolDailySnapshots_cumulativeVolumeUSD":"Cumulative Volume USD",
+        "liquidityPoolDailySnapshots_timestamp":"timestamp"
         })
     if len(df.index) == 0:
-        return 'QUERY RETURNED NO DATA'
-    df['Date'] = df['timestamp'].apply(lambda x: datetime.utcfromtimestamp(int(x)))
-    df['Days'] = df['timestamp'].apply(lambda x: int(int(x)/86400))
-    df["Daily veBAL Holder Revenue"] = df['Daily Protocol Revenue'] * .75
+        return "QUERY RETURNED NO DATA"
+    df["Date"] = df["timestamp"].apply(lambda x: datetime.utcfromtimestamp(int(x)))
+    df["Days"] = df["timestamp"].apply(lambda x: int(int(x)/86400))
+    df["Daily veBAL Holder Revenue"] = df["Daily Protocol Revenue"] * .75
+    df["Pool Name"] = df["Pool Name"].apply(lambda x: x.replace("Balancer v2 ", ""))
     df = df.set_index("Days")
     df = df.iloc[::-1]
     df["Base Yield"] = df["Daily Supply Revenue"]/df["Total Value Locked"] * 100
-    df['USD prices'] = 1
-    df = df.join(ETH_HISTORY_DF['ETH prices'], on="Days")
-    df = df.join(BTC_HISTORY_DF['BTC prices'], on="Days")
-    df = df.join(BAL_HISTORY_DF['BAL prices'], on="Days")
+    df["USD prices"] = 1
+    df = df.join(ETH_HISTORY_DF["ETH prices"], on="Days")
+    df = df.join(BTC_HISTORY_DF["BTC prices"], on="Days")
+    df = df.join(BAL_HISTORY_DF["BAL prices"], on="Days")
     df = df.set_index("id")
 
     return df
