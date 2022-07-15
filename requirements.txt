@@ -2,6 +2,7 @@ subgrounds==0.1.1
 plotly==5.9.0
 streamlit
 streamlit-autorefresh
+st_pyecharts
 black
 altair
 pyecharts
