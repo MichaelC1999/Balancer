@@ -11,7 +11,7 @@ import json
 import datafields
 import charts
 import quarterTable
-from web3 import Web3
+# from web3 import Web3
 from streamlit_echarts import st_pyecharts
 from utils import *
 from config import *
@@ -25,7 +25,7 @@ with open('./treasuryTokens.json', 'r') as f:
 
 TREASURY_ADDR = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f'
 
-w3 = Web3(Web3.HTTPProvider('https://eth-mainnet.alchemyapi.io/v2/WYmSY_d_bqG0HEb68q7V322WOVc8rELO'))
+# w3 = Web3(Web3.HTTPProvider('https://eth-mainnet.alchemyapi.io/v2/WYmSY_d_bqG0HEb68q7V322WOVc8rELO'))
 
 # Refresh every 60 seconds
 REFRESH_INTERVAL_SEC = 600

@@ -6,4 +6,3 @@ streamlit-echarts
 black
 altair
 pyecharts
-web3
