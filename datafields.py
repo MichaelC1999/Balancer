@@ -1,6 +1,7 @@
 from subgrounds.subgrounds import Subgrounds
 import subgrounds.subgraph
 import json
+import random
 
 from datetime import datetime
 import pandas as pd
@@ -145,7 +146,6 @@ def merge_usage_dfs(_dfs):
     df_return['BTC prices'] = _dfs[0]["BTC prices"]
     df_return['USD prices'] = 1
 
-    print(df_return)
     return df_return
 
 @st.experimental_memo
@@ -472,3 +472,131 @@ def get_pool_timeseries_df(_subgraph, _sg, conditions_list=""):
 
     return df
 
+@st.experimental_memo
+def get_timeseries_on_pool_df(_subgraph, _sg, conditions_list="{}", first=1, skip=1):
+    conditions_list = json.loads(conditions_list)
+    liquidity_pools = _subgraph.Query.liquidityPools(
+    first=1000,
+    skip=0,
+    orderBy=_subgraph.LiquidityPool.totalValueLockedUSD,
+    orderDirection='desc'
+    ) 
+    dailySnaps = liquidity_pools.dailySnapshots(
+    where=conditions_list,
+    first=first,
+    skip=skip,
+    orderBy=liquidity_pools.dailySnapshots.timestamp,
+    orderDirection='desc'
+    )
+    df = _sg.query_df([
+        liquidity_pools.id,
+        liquidity_pools.name,
+        dailySnaps.id,
+        dailySnaps.totalValueLockedUSD,
+        dailySnaps.dailySupplySideRevenueUSD,
+        dailySnaps.dailyProtocolSideRevenueUSD,
+        dailySnaps.cumulativeVolumeUSD,
+        dailySnaps.dailyVolumeUSD,
+        dailySnaps.timestamp
+    ])
+    df = df.rename(columns={
+        "liquidityPools_dailySnapshots_id":"id",
+        "liquidityPools_id":"Pool ID",
+        "liquidityPools_name":"Pool Name",
+        "liquidityPools_dailySnapshots_totalValueLockedUSD":"Total Value Locked",
+        "liquidityPools_dailySnapshots_dailySupplySideRevenueUSD":"Daily Supply Revenue",
+        "liquidityPools_dailySnapshots_dailyProtocolSideRevenueUSD":"Daily Protocol Revenue",
+        "liquidityPools_dailySnapshots_dailyVolumeUSD":"Daily Volume",
+        "liquidityPools_dailySnapshots_cumulativeVolumeUSD":"Cumulative Volume USD",
+        "liquidityPools_dailySnapshots_timestamp":"timestamp"
+        })
+    if len(df.index) == 0:
+        return "QUERY RETURNED NO DATA"
+    df["Date"] = df["timestamp"].apply(lambda x: datetime.utcfromtimestamp(int(x)))
+    df["Days"] = df["timestamp"].apply(lambda x: int(int(x)/86400))
+    df["Daily veBAL Holder Revenue"] = df["Daily Protocol Revenue"] * .75
+    df["Pool Name"] = df["Pool Name"].apply(lambda x: x.replace("Balancer v2 ", ""))
+    df = df.set_index("Days")
+    df = df.iloc[::-1]
+    df["Base Yield"] = df["Daily Supply Revenue"]/df["Total Value Locked"] * 100
+    df["USD prices"] = 1
+    df = df.join(ETH_HISTORY_DF["ETH prices"], on="Days")
+    df = df.join(BTC_HISTORY_DF["BTC prices"], on="Days")
+    df = df.join(BAL_HISTORY_DF["BAL prices"], on="Days")
+    df = df.set_index("id")
+    return df
+
+@st.experimental_memo
+def get_largest_current_depositors_df(_subgraph, _sg, conditions_list="{}"):
+    conditions_list = json.loads(conditions_list)
+    conditions_list['totalValueLockedUSD_gt'] = 1000000
+    
+    liquidityPools = _subgraph.Query.liquidityPools(
+        first=1000,
+        orderBy=_subgraph.LiquidityPool.totalValueLockedUSD,
+        orderDirection='desc',
+        where=conditions_list
+    )
+    positions = liquidityPools.positions(
+    where={"timestampClosed": None},
+    first=5000,
+    orderBy=liquidityPools.positions.outputTokenBalance,
+    orderDirection='desc'
+    )
+    liquidityPools_df = _sg.query_df([
+        liquidityPools.totalValueLockedUSD,
+        liquidityPools.outputTokenSupply,
+        positions.outputTokenBalance,
+        positions.timestampClosed,
+        positions.account.id,
+        positions.id
+    ])
+    liquidityPools_df = liquidityPools_df.rename(columns={
+        'liquidityPools_totalValueLockedUSD':'Total Value Locked',
+        'liquidityPools_outputTokenSupply':'Output Token Supply',
+        'liquidityPools_positions_outputTokenBalance': 'Output Token Balance',
+        'liquidityPools_positions_timestampClosed': 'Timestamp Closed',
+        'liquidityPools_positions_account_id': 'Account ID',
+        'liquidityPools_positions_id': 'Position ID',
+    })
+    
+    liquidityPools_df['Position Value'] = liquidityPools_df['Total Value Locked'] / 6587568 * liquidityPools_df['Output Token Balance']
+    return liquidityPools_df
+
+@st.experimental_memo
+def get_pool_gini(_subgraph, _sg, conditions_list="{}"):
+    conditions_list = json.loads(conditions_list)
+    conditions_list['totalValueLockedUSD_gt'] = 1000000
+    # conditions_list["openPositionCount_gt"] = 20
+    liquidityPools = _subgraph.Query.liquidityPools(
+        first=1000,
+        orderBy=_subgraph.LiquidityPool.openPositionCount,
+        orderDirection='desc',
+        where=conditions_list
+    )
+    positions = liquidityPools.positions(
+    where={"timestampClosed": None},
+    first=5000
+    )
+    liquidityPools_df = _sg.query_df([
+        liquidityPools.id,
+        liquidityPools.totalValueLockedUSD,
+        liquidityPools.outputTokenSupply,
+        liquidityPools.openPositionCount,
+        positions.outputTokenBalance,
+        positions.timestampClosed,
+    ])
+    liquidityPools_df = liquidityPools_df.rename(columns={
+        'liquidityPools_id':'Pool ID',
+        'liquidityPools_totalValueLockedUSD':'Total Value Locked',
+        'liquidityPools_outputTokenSupply':'Output Token Supply',
+        "liquidityPools_openPositionCount": "Open Position Count",
+        'liquidityPools_positions_outputTokenBalance': 'Output Token Balance',
+    })
+    # liquidityPools_df['Portion of Pool'] = liquidityPools_df['Output Token Balance']/liquidityPools_df['Output Token Supply']
+    liquidityPools_df['Portion of Pool'] = liquidityPools_df['Output Token Balance']/(liquidityPools_df['Output Token Balance']*random.randint(0, 9))
+    # sort here asc token values on positions
+    liquidityPools_df = liquidityPools_df.sort_values("Output Token Balance", ascending=False)
+    liquidityPools_df["Position Index on Pool"] = liquidityPools_df.groupby("Pool ID").cumcount()
+
+    return liquidityPools_df
