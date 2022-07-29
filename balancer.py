@@ -607,6 +607,12 @@ elif st.session_state['tab'] == 'Liquidity Providers':
     if 'Depositors' not in st.session_state['table_states']:
         st.session_state['table_states']['Depositors'] = {'rank_col': 'Position Value', 'ccy': 'USD'}
 
+    mainnet_pools_gini = datafields.get_pools_gini(balancerV2_mainnet, sg)
+    matic_pools_gini = datafields.get_pools_gini(balancerV2_matic, sg)
+    arbitrum_pools_gini = datafields.get_pools_gini(balancerV2_arbitrum, sg)
+
+    pools_gini = datafields.merge_dfs([mainnet_pools_gini,matic_pools_gini,arbitrum_pools_gini], "GINI" )
+
     mainnet_withdrawals_30d_df = datafields.get_30d_withdraws(balancerV2_mainnet, sg)
     matic_withdrawals_30d_df = datafields.get_30d_withdraws(balancerV2_matic, sg)
     arbitrum_withdrawals_30d_df = datafields.get_30d_withdraws(balancerV2_arbitrum, sg)
@@ -719,9 +725,9 @@ elif st.session_state['tab'] == 'Liquidity Providers':
         
         chart_window_input(key, state_val)
                         
-        historical_yield = charts.generate_line_chart(financial_df, key,yaxis='Historical Yield', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val['ccy'])
+        LP_count = charts.generate_line_chart(usage_df, key,yaxis='Daily Active Users', xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val['ccy'])
         st_pyecharts(
-            chart=historical_yield.LINE_CHART,
+            chart=LP_count.LINE_CHART,
             height='450px',
             key= key,
         )
@@ -752,11 +758,20 @@ elif st.session_state['tab'] == 'Liquidity Providers':
     col1, col2, col3 = st.columns(3)
 
     with col1:
+
         st.subheader('Most Concentrated')
-        datafields.get_pool_gini(balancerV2_mainnet, sg)
+        copy_df = pools_gini.copy()
+        copy_df = copy_df.sort_values(by="GINI",ascending=False)
+        copy_df.index = range(1, len(copy_df) + 1)
+        most_concentrated_table = charts.generate_standard_table(copy_df[['Pool', 'GINI']][:10])
+        st.markdown(most_concentrated_table, unsafe_allow_html=True)
     with col2:
         st.subheader('Least Concentrated')
-
+        copy_df = pools_gini.copy()
+        copy_df = copy_df.sort_values(by="GINI",ascending=True)
+        copy_df.index = range(1, len(copy_df) + 1)
+        least_concentrated_table = charts.generate_standard_table(copy_df[['Pool', 'GINI']][:10])
+        st.markdown(least_concentrated_table, unsafe_allow_html=True)
     with col3:
         st.subheader('Number of LPs by chain')
 
@@ -771,15 +786,25 @@ elif st.session_state['tab'] == 'Traders':
         xaxis_start = xaxis_end - 30
         st.session_state['table_states']['Largest Trades'] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
 
+    dfs_to_merge = []
     mainnet_largest_swaps_window_df = datafields.get_swaps_df(balancerV2_mainnet, sg, 'amountInUSD', window_start=st.session_state['table_states']['Largest Trades']['window_start']*86400)
+    if isinstance(mainnet_largest_swaps_window_df, str) is False:
+        dfs_to_merge.append(mainnet_largest_swaps_window_df)
     matic_largest_swaps_window_df = datafields.get_swaps_df(balancerV2_matic, sg, 'amountInUSD', window_start=st.session_state['table_states']['Largest Trades']['window_start']*86400)
+    if isinstance(matic_largest_swaps_window_df, str) is False:
+        dfs_to_merge.append(matic_largest_swaps_window_df)
     arbitrum_largest_swaps_window_df = datafields.get_swaps_df(balancerV2_arbitrum, sg, 'amountInUSD', window_start=st.session_state['table_states']['Largest Trades']['window_start']*86400)
-    largest_df = datafields.merge_dfs([mainnet_largest_swaps_window_df, matic_largest_swaps_window_df, arbitrum_largest_swaps_window_df], 'Amount In')    
+    if isinstance(arbitrum_largest_swaps_window_df, str) is False:
+        dfs_to_merge.append(arbitrum_largest_swaps_window_df)
+    largest_df = None
+    if len(dfs_to_merge) > 0:
+        largest_df = datafields.merge_dfs(dfs_to_merge, 'Amount In')    
+        
 
     if 'now' not in st.session_state:
         st.session_state['now'] = datetime.datetime.now()
     dfs_to_merge = []
-    timestamp_30d_ago = int(datetime.datetime.timestamp(st.session_state['now'])) - 86400 * 30
+    timestamp_30d_ago = int(datetime.datetime.timestamp(st.session_state['now'])) - 86400 * 3000
     conditions_list = json.dumps({"timestamp_gt": timestamp_30d_ago, "dailyVolumeUSD_gt": 2000})
     last_30d_snapshots_mainnet = datafields.get_pool_timeseries_df(balancerV2_mainnet, sg, conditions_list=conditions_list)
     snapshot_token_volumes_mainnet = last_30d_snapshots_mainnet.groupby('id')["Daily Volume By Token"].apply(list).to_dict()
@@ -862,21 +887,21 @@ elif st.session_state['tab'] == 'Traders':
         key = 'Largest Trades'
         state_val = st.session_state['table_states'][key]
         st.subheader(key)
-        
-        chart_window_input(key, state_val)
-        ccy_selection('table',key, state_val)
-        largest_df.index = range(1, len(largest_df) + 1)
-        amount_col = 'Amount (' + state_val['ccy'] + ')'
-        largest_df = largest_df.rename(columns={'Amount In':amount_col, 'Date String': 'Tx Date'})
-        copy_df = largest_df.copy()
-        if state_val['ccy'] in ccy_options:
-            copy_df[amount_col] = round(largest_df[amount_col]/largest_df[state_val['ccy'] + ' prices'],2)
+        if largest_df != None:
+            chart_window_input(key, state_val)
+            ccy_selection('table',key, state_val)
+            largest_df.index = range(1, len(largest_df) + 1)
+            amount_col = 'Amount (' + state_val['ccy'] + ')'
+            largest_df = largest_df.rename(columns={'Amount In':amount_col, 'Date String': 'Tx Date'})
+            copy_df = largest_df.copy()
+            if state_val['ccy'] in ccy_options:
+                copy_df[amount_col] = round(largest_df[amount_col]/largest_df[state_val['ccy'] + ' prices'],2)
 
 
-        copy_df = copy_df.sort_values(by=amount_col,ascending=False)
-        copy_df.index = range(1, len(copy_df) + 1)
-        largest_tx_table = charts.generate_standard_table(copy_df[['Pool', amount_col, 'Tx Date', 'Transaction Hash']][:20])        
-        st.markdown(largest_tx_table, unsafe_allow_html=True)
+            copy_df = copy_df.sort_values(by=amount_col,ascending=False)
+            copy_df.index = range(1, len(copy_df) + 1)
+            largest_tx_table = charts.generate_standard_table(copy_df[['Pool', amount_col, 'Tx Date', 'Transaction Hash']][:20])        
+            st.markdown(largest_tx_table, unsafe_allow_html=True)
 
     with col3:
 
@@ -975,6 +1000,9 @@ elif st.session_state['tab'] == 'Traders':
         
     with col2:
         st.subheader('Tx amounts by size pie chart')
+        swap_size_buckets = datafields.get_swaps_by_pool(balancerV2_mainnet, sg)
+        tx_by_size=charts.generate_donut_chart(list(swap_size_buckets.keys()), list(swap_size_buckets.values()), ['rgb(74, 144, 226)', 'rgb(255, 148, 0)', 'rgb(255, 0, 0)','rgb(99, 210, 142)', 'rgb(6, 4, 4)'])
+        st.plotly_chart(tx_by_size, use_container_width=True)
 
     with col3:
         st.subheader('Tx by trader type')

@@ -1,5 +1,6 @@
 import pytz
 import datetime
+import numpy as np
 from pyecharts.types import JsCode
 
 ccy_options=['USD', 'ETH', 'BTC', 'BAL']

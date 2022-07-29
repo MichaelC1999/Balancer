@@ -2,6 +2,7 @@ from subgrounds.subgrounds import Subgrounds
 import subgrounds.subgraph
 import json
 import random
+from utils import *
 
 from datetime import datetime
 import pandas as pd
@@ -106,18 +107,18 @@ def get_usage_metrics_df(_subgraph, _sg, latest_schema=True):
       usageMetrics.cumulativeUniqueUsers,
       usageMetrics.dailyActiveUsers,
       usageMetrics.dailyTransactionCount,
-      usageMetrics.dailyDepositCount,
-      usageMetrics.dailyWithdrawCount,
-      usageMetrics.dailySwapCount,
+      usageMetrics.depositStats.count,
+      usageMetrics.withdrawStats.count,
+      usageMetrics.swapStats.count,
       usageMetrics.totalPoolCount,
       usageMetrics.timestamp
     ]
     df = _sg.query_df(query_fields)
     df['Date'] = df['usageMetricsDailySnapshots_id'].apply(lambda x: datetime.utcfromtimestamp(int(x)*86400))
     df = df.rename(columns={
-        'usageMetricsDailySnapshots_dailyDepositCount':'Daily Deposit Count',
-        'usageMetricsDailySnapshots_dailyWithdrawCount':'Daily Withdraw Count',
-        'usageMetricsDailySnapshots_dailySwapCount':'Daily Swap Count',
+        'usageMetricsDailySnapshots_swapStats_count':'Daily Deposit Count',
+        'usageMetricsDailySnapshots_withdrawStats_count':'Daily Withdraw Count',
+        'usageMetricsDailySnapshots_depositStats_count':'Daily Swap Count',
         'usageMetricsDailySnapshots_dailyTransactionCount': 'Daily Transaction Count',
         'usageMetricsDailySnapshots_dailyActiveUsers':'Daily Active Users',
         'usageMetricsDailySnapshots_cumulativeUniqueUsers':'Cumulative New Users',
@@ -130,7 +131,6 @@ def get_usage_metrics_df(_subgraph, _sg, latest_schema=True):
     df = df.join(BTC_HISTORY_DF['BTC prices'], on="Days")
     df = df.join(BAL_HISTORY_DF['BAL prices'], on="Days")
     df = df.iloc[::-1]
-
     df['id'] = df['usageMetricsDailySnapshots_id']
     df = df.set_index("id")
     return df
@@ -238,14 +238,13 @@ def get_swaps_df(_subgraph,_sg,sort_value,window_start=0,tx_above=0,tx_below=100
     df = _sg.query_df([
         event.timestamp,
         event.hash,
-        event.__getattribute__('from'),
-        event.to,
         event.tokenIn.name,
         event.tokenOut.name,
         event.tokenIn.id,
         event.tokenOut.id,
         event.amountInUSD,
-        event.amountOutUSD
+        event.amountOutUSD,
+        event.account.id
     ])
     if len(df.index) == 0:
         return 'QUERY RETURNED NO DATA'
@@ -254,15 +253,14 @@ def get_swaps_df(_subgraph,_sg,sort_value,window_start=0,tx_above=0,tx_below=100
     df['Date String'] = df['swaps_timestamp'].apply(lambda x: datetime.utcfromtimestamp(int(x)).strftime("%Y-%m-%d"))
     df = df.rename(columns={
         'swaps_hash':'Transaction Hash',
-        'swaps_from':'From',
-        'swaps_to':'To',
         'swaps_tokenIn_name': 'Token In Name',
         'swaps_tokenOut_name': 'Token Out Name',
         'swaps_tokenIn_id': 'Token In',
         'swaps_tokenOut_id': 'Token Out',
         'swaps_amountInUSD':'Amount In',
         'swaps_amountOutUSD':'Amount Out',
-        'swaps_timestamp':'timestamp'
+        'swaps_timestamp':'timestamp',
+        'swaps_account_id': 'Wallet'
     })
 
     df['Pool'] = df['Token In Name'] + '/' + df['Token Out Name']
@@ -276,7 +274,7 @@ def get_swaps_df(_subgraph,_sg,sort_value,window_start=0,tx_above=0,tx_below=100
 @st.experimental_memo
 def get_30d_withdraws(_subgraph, _sg):
     now = int(datetime.timestamp(datetime.now()))
-    withinMonthTimestamp = now - (86400 * 30)
+    withinMonthTimestamp = now - (86400 * 3000)
     slug = 'withdraws'
     event = _subgraph.Query.__getattribute__(slug)(
         orderBy=_subgraph.__getattribute__('Withdraw').amountUSD,
@@ -287,18 +285,16 @@ def get_30d_withdraws(_subgraph, _sg):
     df = _sg.query_df([
         event.timestamp,
         event.hash,
-        event.__getattribute__('from'),
-        event.to,
         event.pool.name,
-        event.amountUSD
+        event.amountUSD,
+        event.account.id
     ])
     df = df.rename(columns={
         slug+'_hash':'Transaction Hash',
         slug+'_timestamp':'timestamp',
-        slug+'_from':'From',
-        slug+'_to':'Wallet',
         slug+'_pool_name':'Pool',
-        slug+'_amountUSD':'Amount'
+        slug+'_amountUSD':'Amount',
+        slug+'_account_id': 'Wallet'
     })
     df['Days'] = df['timestamp'].apply(lambda x: int(int(x)/86400))
     df['USD prices'] = 1
@@ -564,7 +560,7 @@ def get_largest_current_depositors_df(_subgraph, _sg, conditions_list="{}"):
     return liquidityPools_df
 
 @st.experimental_memo
-def get_pool_gini(_subgraph, _sg, conditions_list="{}"):
+def get_pools_gini(_subgraph, _sg, conditions_list="{}"):
     conditions_list = json.loads(conditions_list)
     conditions_list['totalValueLockedUSD_gt'] = 1000000
     # conditions_list["openPositionCount_gt"] = 20
@@ -594,9 +590,55 @@ def get_pool_gini(_subgraph, _sg, conditions_list="{}"):
         'liquidityPools_positions_outputTokenBalance': 'Output Token Balance',
     })
     # liquidityPools_df['Portion of Pool'] = liquidityPools_df['Output Token Balance']/liquidityPools_df['Output Token Supply']
-    liquidityPools_df['Portion of Pool'] = liquidityPools_df['Output Token Balance']/(liquidityPools_df['Output Token Balance']*random.randint(0, 9))
+    liquidityPools_df['Portion of Pool'] = liquidityPools_df['Output Token Balance']/(liquidityPools_df['Output Token Balance']*random.randint(2, 9))
     # sort here asc token values on positions
     liquidityPools_df = liquidityPools_df.sort_values("Output Token Balance", ascending=False)
-    liquidityPools_df["Position Index on Pool"] = liquidityPools_df.groupby("Pool ID").cumcount()
+    liquidityPools_df["Position Index on Pool"] = liquidityPools_df.groupby("Pool ID").cumcount() + 1
+    liquidityPools_df["GINI Data Point"] = liquidityPools_df['Portion of Pool'] / (liquidityPools_df["Position Index on Pool"]/liquidityPools_df["Open Position Count"])
+    pool_to_GINI_dataset_mapping = liquidityPools_df.groupby("Pool ID")["GINI Data Point"].apply(list).to_dict()
+    pool_to_GINI_mapping = {}
+    for pool_id, dataset in pool_to_GINI_dataset_mapping.items():
+        pool_to_GINI_mapping[pool_id] = gini(dataset)
+    GINI_pools_df = pd.DataFrame({"Pool":pool_to_GINI_mapping.keys(), "GINI": pool_to_GINI_mapping.values()})
+    return GINI_pools_df
 
-    return liquidityPools_df
+@st.experimental_memo
+def get_swaps_by_pool(_subgraph, _sg, conditions_list="{}"):
+    conditions_list = json.loads(conditions_list)
+    liquidityPools = _subgraph.Query.liquidityPools(
+        first=1000,
+        orderBy=_subgraph.LiquidityPool.totalValueLockedUSD,
+        orderDirection='desc',
+        where=conditions_list
+    )
+    swaps = liquidityPools.swaps(
+    where={"timestamp_gt": int(datetime.timestamp(datetime.now())) - (86400 * 1400)},
+    first=5000
+    )
+    swaps_df = _sg.query_df([
+        swaps.amountInUSD
+    ])
+    swaps_df = swaps_df.rename(columns={
+        'liquidityPools_swaps_amountInUSD':'TX Amount',
+    })
+    tx_amounts = swaps_df['TX Amount'].tolist()
+
+    tx_buckets = {"0-100": 0, "100-1000": 0, "1000-10000": 0, "10000-100000": 0, "100000-1000000": 0, "1000000-10000000": 0, "10000000+": 0}
+
+    for x in tx_amounts:
+        if x < 100:
+            tx_buckets["0-100"] += 1
+        elif x >= 100 and x < 1000:
+            tx_buckets["100-1000"] += 1
+        elif x >= 1000 and x < 10000:
+            tx_buckets["1000-10000"] += 1
+        elif x >= 10000 and x < 100000:
+            tx_buckets["10000-100000"] += 1
+        elif x >= 100000 and x < 1000000:
+            tx_buckets["100000-1000000"] += 1
+        elif x >= 1000000 and x < 10000000:
+            tx_buckets["1000000-10000000"] += 1
+        elif x >= 10000000:
+            tx_buckets["10000000+"] += 1
+
+    return tx_buckets
