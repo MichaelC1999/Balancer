@@ -636,17 +636,11 @@ elif st.session_state['tab'] == 'Liquidity Providers':
     if (len(dfs_to_merge) > 0):
         all_24h_pool_snapshots_df = datafields.merge_dfs(dfs_to_merge, st.session_state['table_states']['Pool Snaps']['rank_col'])
 
-        # mainnet_top_10_rev = datafields.get_top_x_liquidityPools(balancerV2_mainnet, sg, 'cumulativeTotalRevenueUSD', 10)
-        # matic_top_10_rev = datafields.get_top_x_liquidityPools(balancerV2_matic, sg, 'cumulativeTotalRevenueUSD', 10)
-        # arbitrum_top_10_rev = datafields.get_top_x_liquidityPools(balancerV2_arbitrum, sg, 'cumulativeTotalRevenueUSD', 10)
+    mainnet_accounts_df= datafields.get_largest_current_depositors_df(balancerV2_mainnet, sg)
+    matic_accounts_df= datafields.get_largest_current_depositors_df(balancerV2_matic, sg)
+    arbitrum_accounts_df= datafields.get_largest_current_depositors_df(balancerV2_arbitrum, sg)
+    accounts_df = datafields.merge_dfs([mainnet_accounts_df, matic_accounts_df, arbitrum_accounts_df], 'Position Value')
 
-        # top_10_rev = datafields.merge_dfs([mainnet_top_10_rev, matic_top_10_rev, arbitrum_top_10_rev], 'cumulativeTotalRevenueUSD')
-
-        # mainnet_top_10_vol = datafields.get_top_x_liquidityPools(balancerV2_mainnet, sg, 'cumulativeVolumeUSD', 10)
-        # matic_top_10_vol = datafields.get_top_x_liquidityPools(balancerV2_matic, sg, 'cumulativeVolumeUSD', 10)
-        # arbitrum_top_10_vol = datafields.get_top_x_liquidityPools(balancerV2_arbitrum, sg, 'cumulativeVolumeUSD', 10)
-
-        # top_10_vol = datafields.merge_dfs([mainnet_top_10_vol, matic_top_10_vol, arbitrum_top_10_vol], 'cumulativeVolumeUSD')
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -669,15 +663,11 @@ elif st.session_state['tab'] == 'Liquidity Providers':
         st.markdown(top_10_table, unsafe_allow_html=True)
 
     with col2:
-        mainnet_accounts_df= datafields.get_largest_current_depositors_df(balancerV2_mainnet, sg)
-        matic_accounts_df= datafields.get_largest_current_depositors_df(balancerV2_matic, sg)
-        arbitrum_accounts_df= datafields.get_largest_current_depositors_df(balancerV2_arbitrum, sg)
-        accounts_df = datafields.merge_dfs([mainnet_accounts_df, matic_accounts_df, arbitrum_accounts_df], 'Position Value')
         st.subheader('Largest Depositors')
         state_val = st.session_state['table_states']['Depositors']
         ccy_selection('table','Depositors', state_val)
 
-        accounts_df = pd.DataFrame({
+        depositor_sums_df = pd.DataFrame({
         'Account ID': accounts_df.groupby('Account ID')['Account ID'].first(),
         'Sum of Positions': accounts_df.groupby('Account ID')['Position Value'].sum(),
         'USD prices': 1,
@@ -686,9 +676,9 @@ elif st.session_state['tab'] == 'Liquidity Providers':
         'BAL prices': datafields.get_ccy_current_value('BAL')
         }).sort_values('Sum of Positions', ascending=False)
 
-        copy_df= accounts_df.copy()
+        copy_df= depositor_sums_df.copy()
         if state_val['ccy'] in ccy_options:
-            copy_df['Sum of Positions'] = accounts_df['Sum of Positions']/accounts_df[state_val['ccy'] + ' prices']
+            copy_df['Sum of Positions'] = depositor_sums_df['Sum of Positions']/depositor_sums_df[state_val['ccy'] + ' prices']
         copy_df.index = range(1, len(copy_df) + 1)
         depos_table = charts.generate_standard_table(copy_df[['Account ID', 'Sum of Positions']][:10])
         st.markdown(depos_table, unsafe_allow_html=True)
@@ -774,6 +764,13 @@ elif st.session_state['tab'] == 'Liquidity Providers':
         st.markdown(least_concentrated_table, unsafe_allow_html=True)
     with col3:
         st.subheader('Number of LPs by chain')
+
+    # HISTOGRAM
+    with st.container():
+        st.subheader('Open positions per wallet')
+        accounts_df["Open Positions Per Account"] = accounts_df['Account Open Positions']
+        hist = charts.generate_histogram(accounts_df, "Open Positions Per Account")
+        st.plotly_chart(hist, use_container_width=True)
 
 elif st.session_state['tab'] == 'Traders':
     mainnet_swaps_df = datafields.get_swaps_df(balancerV2_mainnet, sg, 'amountInUSD')

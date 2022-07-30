@@ -274,6 +274,7 @@ def get_swaps_df(_subgraph,_sg,sort_value,window_start=0,tx_above=0,tx_below=100
 @st.experimental_memo
 def get_30d_withdraws(_subgraph, _sg):
     now = int(datetime.timestamp(datetime.now()))
+    #     withinMonthTimestamp = now - (86400 * 30)
     withinMonthTimestamp = now - (86400 * 3000)
     slug = 'withdraws'
     event = _subgraph.Query.__getattribute__(slug)(
@@ -545,6 +546,7 @@ def get_largest_current_depositors_df(_subgraph, _sg, conditions_list="{}"):
         positions.outputTokenBalance,
         positions.timestampClosed,
         positions.account.id,
+        positions.account.openPositionCount,
         positions.id
     ])
     liquidityPools_df = liquidityPools_df.rename(columns={
@@ -553,10 +555,10 @@ def get_largest_current_depositors_df(_subgraph, _sg, conditions_list="{}"):
         'liquidityPools_positions_outputTokenBalance': 'Output Token Balance',
         'liquidityPools_positions_timestampClosed': 'Timestamp Closed',
         'liquidityPools_positions_account_id': 'Account ID',
+        'liquidityPools_positions_account_openPositionCount': 'Account Open Positions',
         'liquidityPools_positions_id': 'Position ID',
     })
-    
-    liquidityPools_df['Position Value'] = liquidityPools_df['Total Value Locked'] / 6587568 * liquidityPools_df['Output Token Balance']
+    liquidityPools_df['Position Value'] = liquidityPools_df['Output Token Balance'] * (liquidityPools_df['Total Value Locked'] / liquidityPools_df['Output Token Supply'])
     return liquidityPools_df
 
 @st.experimental_memo
@@ -612,6 +614,7 @@ def get_swaps_by_pool(_subgraph, _sg, conditions_list="{}"):
         where=conditions_list
     )
     swaps = liquidityPools.swaps(
+    #where={"timestamp_gt": int(datetime.timestamp(datetime.now())) - (86400 * 14)}, 
     where={"timestamp_gt": int(datetime.timestamp(datetime.now())) - (86400 * 1400)},
     first=5000
     )

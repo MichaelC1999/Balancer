@@ -6,6 +6,8 @@ from pyecharts import options as opts
 import pyecharts
 from CustomCharts import CustomLineChart, CustomBarChart, CustomPieChart
 import plotly.graph_objects as go
+import statistics
+
 from utils import *
 from config import *
 
@@ -251,3 +253,72 @@ def generate_standard_table(df):
 
 def generate_donut_chart(labels=[], values=[], colors=['rgb(74, 144, 226)', 'rgb(255, 148, 0)', 'rgb(255, 0, 0)','rgb(99, 210, 142)', 'rgb(6, 4, 4)']):
     return go.Figure(data=[go.Pie(labels=labels, values=values, hole=.5, marker_colors = colors)])
+
+def generate_histogram(df, xaxis=""):
+    value_counts = df[xaxis].value_counts()
+    counts = df[xaxis].tolist()
+    fig = go.Figure(data=[go.Histogram(x=counts,marker_color='rgb(74,144,226)')])
+    fig.update_layout(
+        plot_bgcolor = "rgb(35,58,79)",
+        xaxis_title=xaxis,
+        yaxis_title="Frequency",
+        xaxis=dict(showgrid=False),
+        yaxis=dict(showgrid=False),
+        # Annotations
+        annotations=[
+            dict(
+                x=sum(counts) / len(counts),
+                y=max(value_counts.tolist()),
+                text="Mean a = " + str((sum(counts) / len(counts))),
+                showarrow=True,
+                arrowhead=7,
+                ax=1,
+                ay=1,
+                font=dict(
+                    family="Courier New, monospace",
+                    size=12,
+                    color="#ffffff"
+                ),
+            ),
+            dict(
+                x=statistics.median(counts),
+                y=(max(value_counts.tolist()) * 0.84),
+                text="Median a = " + str((statistics.median(counts))),
+                showarrow=True,
+                arrowhead=7,
+                ax=1,
+                ay=1,
+                font=dict(
+                    family="Courier New, monospace",
+                    size=12,
+                    color="#ffffff"
+                ),
+            )
+        ],
+        showlegend=False,
+    )
+    fig.add_shape(
+        go.layout.Shape(
+            type="line",
+            xref="x",
+            yref="y",
+            x0=sum(counts) / len(counts),
+            y0=-0.1,
+            x1=sum(counts) / len(counts),
+            y1=max(value_counts.tolist()),
+            line=dict(color='red', width=3, dash='dot'),
+        )
+    )
+    fig.add_shape(
+        go.layout.Shape(
+            type="line",
+            xref="x",
+            yref="y",
+            x0=statistics.median(counts),
+            y0=-0.1,
+            x1=statistics.median(counts),
+            y1=max(value_counts.tolist()),
+            line=dict(color='lime', width=3, dash='dot'),
+        )
+    )
+    return fig
