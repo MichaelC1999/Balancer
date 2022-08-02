@@ -402,22 +402,34 @@ def get_veBAL_top_wallets(_veBAL_subgraph, _sg):
 def get_pool_data_df(_subgraph, _sg, pool):
     poolId = pool.split(' - ')[1]
     liquidityPool = _subgraph.Query.liquidityPool(id=poolId)
+    positions = liquidityPool.positions(
+    first=10,
+    orderBy=liquidityPool.positions.outputTokenBalance,
+    orderDirection='desc'
+    )
     df = _sg.query_df([
       liquidityPool.id,
       liquidityPool.name,
-      liquidityPool.inputTokens.name,
-      liquidityPool.createdTimestamp
+      liquidityPool.createdTimestamp,
+      liquidityPool.totalValueLockedUSD,
+      liquidityPool.outputTokenSupply,
+      positions.outputTokenBalance,
+      positions.account.id
     ])
     df['Creation Date'] = df['liquidityPool_createdTimestamp'].apply(lambda x: datetime.utcfromtimestamp(int(x)))
     df = df.rename(columns={
         'liquidityPool_id':'id',
         'liquidityPool_name':'Name',
-        'liquidityPool_inputTokens_name': 'Input Tokens'
+        'liquidityPool_totalValueLockedUSD': "Total Value Locked",
+        'liquidityPool_outputTokenSupply': "Output Token Supply",
+        'liquidityPool_positions_outputTokenBalance': "Amount In Tokens",
+        'liquidityPool_positions_account_id': "Account ID"
         })
 
     df = df.set_index("id")
+    df["Amount In USD"] = (df["Total Value Locked"] / df["Output Token Supply"]) * df["Amount In Tokens"]
     print(df)
-    return df
+    return df.sort_values("Amount In USD", ascending=False)
 
 @st.experimental_memo
 def get_pool_timeseries_df(_subgraph, _sg, conditions_list=""):
@@ -432,6 +444,7 @@ def get_pool_timeseries_df(_subgraph, _sg, conditions_list=""):
         liquidityPoolSnapshots.id,
         liquidityPoolSnapshots.pool.id,
         liquidityPoolSnapshots.pool.name,
+        liquidityPoolSnapshots.swapStats.count,
         liquidityPoolSnapshots.totalValueLockedUSD,
         liquidityPoolSnapshots.dailyVolumeUSD,
         liquidityPoolSnapshots.dailyVolumeByTokenUSD,
@@ -444,6 +457,7 @@ def get_pool_timeseries_df(_subgraph, _sg, conditions_list=""):
         "liquidityPoolDailySnapshots_id":"id",
         "liquidityPoolDailySnapshots_pool_id":"Pool ID",
         "liquidityPoolDailySnapshots_pool_name":"Pool Name",
+        "liquidityPoolDailySnapshots_swapStats_count":"Swap Count",
         "liquidityPoolDailySnapshots_totalValueLockedUSD":"Total Value Locked",
         "liquidityPoolDailySnapshots_dailyVolumeByTokenUSD":"Daily Volume By Token",
         "liquidityPoolDailySnapshots_dailySupplySideRevenueUSD":"Daily Supply Revenue",
@@ -524,9 +538,13 @@ def get_timeseries_on_pool_df(_subgraph, _sg, conditions_list="{}", first=1, ski
     return df
 
 @st.experimental_memo
-def get_largest_current_depositors_df(_subgraph, _sg, conditions_list="{}"):
+def get_largest_current_depositors_df(_subgraph, _sg, conditions_list="{}", positions_conditions_list="{}"):
     conditions_list = json.loads(conditions_list)
-    conditions_list['totalValueLockedUSD_gt'] = 1000000
+    if positions_conditions_list == None:
+        positions_conditions_list = [_subgraph.Position.timestampClosed == None or _subgraph.Position.timestampClosed > int(datetime.datetime.timestamp(datetime.datetime.now())) - 86400 * 30]
+
+    else:
+        positions_conditions_list = json.loads(positions_conditions_list)
     
     liquidityPools = _subgraph.Query.liquidityPools(
         first=1000,
@@ -535,12 +553,13 @@ def get_largest_current_depositors_df(_subgraph, _sg, conditions_list="{}"):
         where=conditions_list
     )
     positions = liquidityPools.positions(
-    where={"timestampClosed": None},
+    where=positions_conditions_list,
     first=5000,
     orderBy=liquidityPools.positions.outputTokenBalance,
     orderDirection='desc'
     )
     liquidityPools_df = _sg.query_df([
+        liquidityPools.id,
         liquidityPools.totalValueLockedUSD,
         liquidityPools.outputTokenSupply,
         positions.outputTokenBalance,
@@ -550,6 +569,7 @@ def get_largest_current_depositors_df(_subgraph, _sg, conditions_list="{}"):
         positions.id
     ])
     liquidityPools_df = liquidityPools_df.rename(columns={
+        'liquidityPools_id': "Pool ID",
         'liquidityPools_totalValueLockedUSD':'Total Value Locked',
         'liquidityPools_outputTokenSupply':'Output Token Supply',
         'liquidityPools_positions_outputTokenBalance': 'Output Token Balance',
@@ -592,17 +612,39 @@ def get_pools_gini(_subgraph, _sg, conditions_list="{}"):
         'liquidityPools_positions_outputTokenBalance': 'Output Token Balance',
     })
     # liquidityPools_df['Portion of Pool'] = liquidityPools_df['Output Token Balance']/liquidityPools_df['Output Token Supply']
-    liquidityPools_df['Portion of Pool'] = liquidityPools_df['Output Token Balance']/(liquidityPools_df['Output Token Balance']*random.randint(2, 9))
+    # liquidityPools_df['Portion of Pool'] = liquidityPools_df['Output Token Balance']/(liquidityPools_df['Output Token Balance']*random.randint(2, 9))
     # sort here asc token values on positions
-    liquidityPools_df = liquidityPools_df.sort_values("Output Token Balance", ascending=False)
+    # liquidityPools_df = liquidityPools_df.sort_values("Output Token Balance", ascending=False)
+    # liquidityPools_df["GINI Data Point"] = liquidityPools_df['Portion of Pool'] / (liquidityPools_df["Position Index on Pool"]/liquidityPools_df["Open Position Count"])
+    # pool_to_GINI_dataset_mapping = liquidityPools_df.groupby("Pool ID")["GINI Data Point"].apply(list).to_dict()
+    # pool_to_GINI_mapping = {}
+    # for pool_id, dataset in pool_to_GINI_dataset_mapping.items():
+        # pool_to_GINI_mapping[pool_id] = gini(dataset)
+    # GINI_pools_df = pd.DataFrame({"Pool":pool_to_GINI_mapping.keys(), "GINI": pool_to_GINI_mapping.values()})
+    
+    # FROM EXCEL
+    liquidityPools_df["Output Token Balance"] = pd.to_numeric(liquidityPools_df["Output Token Balance"],errors='coerce')
+    # sort by output token balance asc
+    liquidityPools_df = liquidityPools_df.sort_values("Output Token Balance", ascending=True)
+    # Create df column for number of index out of total position count
     liquidityPools_df["Position Index on Pool"] = liquidityPools_df.groupby("Pool ID").cumcount() + 1
-    liquidityPools_df["GINI Data Point"] = liquidityPools_df['Portion of Pool'] / (liquidityPools_df["Position Index on Pool"]/liquidityPools_df["Open Position Count"])
-    pool_to_GINI_dataset_mapping = liquidityPools_df.groupby("Pool ID")["GINI Data Point"].apply(list).to_dict()
-    pool_to_GINI_mapping = {}
-    for pool_id, dataset in pool_to_GINI_dataset_mapping.items():
-        pool_to_GINI_mapping[pool_id] = gini(dataset)
-    GINI_pools_df = pd.DataFrame({"Pool":pool_to_GINI_mapping.keys(), "GINI": pool_to_GINI_mapping.values()})
-    return GINI_pools_df
+    # Get count of positions on pool, save to column(OPEN POSITION COUNT)
+    
+    liquidityPools_df["Output Token Balance total"] = liquidityPools_df.groupby("Pool ID")["Output Token Balance"].transform('sum')
+
+    # create df column for cumulative pool share for output token balance
+    liquidityPools_df["Cumulative Pool Share"] = liquidityPools_df.groupby("Pool ID")["Output Token Balance"].transform(pd.Series.cumsum)
+    # create equality line df column that takes that rows position on pool value and divides by pool length count
+    liquidityPools_df["Pos Count"] = liquidityPools_df.groupby("Pool ID")["Position Index on Pool"].transform('count')
+    liquidityPools_df["EQ"] = liquidityPools_df["Position Index on Pool"] / liquidityPools_df["Pos Count"]
+    # create lorenz curve column that takes that rows cumulative pool share and divide by output token supply
+    liquidityPools_df["Lorenz Curve"] = liquidityPools_df["Cumulative Pool Share"] / liquidityPools_df["Output Token Balance total"]
+    # create eq vs lorenz column that subtracts that rows eq val by lorenz val
+    liquidityPools_df["EQ vs Lorenz"] = liquidityPools_df["EQ"] - liquidityPools_df["Lorenz Curve"]
+    # create gini point column 
+    liquidityPools_df["GINI Point"] = liquidityPools_df["EQ vs Lorenz"] * liquidityPools_df["EQ"]
+    
+    return pd.DataFrame({"Pool": liquidityPools_df.groupby("Pool ID")["Pool ID"].first(), "GINI": liquidityPools_df.groupby("Pool ID")["GINI Point"].sum()})
 
 @st.experimental_memo
 def get_swaps_by_pool(_subgraph, _sg, conditions_list="{}"):

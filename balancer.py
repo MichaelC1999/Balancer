@@ -636,9 +636,9 @@ elif st.session_state['tab'] == 'Liquidity Providers':
     if (len(dfs_to_merge) > 0):
         all_24h_pool_snapshots_df = datafields.merge_dfs(dfs_to_merge, st.session_state['table_states']['Pool Snaps']['rank_col'])
 
-    mainnet_accounts_df= datafields.get_largest_current_depositors_df(balancerV2_mainnet, sg)
-    matic_accounts_df= datafields.get_largest_current_depositors_df(balancerV2_matic, sg)
-    arbitrum_accounts_df= datafields.get_largest_current_depositors_df(balancerV2_arbitrum, sg)
+    mainnet_accounts_df= datafields.get_largest_current_depositors_df(balancerV2_mainnet, sg, conditions_list = json.dumps({'totalValueLockedUSD_gt': 1000000}), positions_conditions_list=json.dumps({"timestampClosed": None}))
+    matic_accounts_df= datafields.get_largest_current_depositors_df(balancerV2_matic, sg, conditions_list = json.dumps({'totalValueLockedUSD_gt': 1000000}), positions_conditions_list=json.dumps({"timestampClosed": None}))
+    arbitrum_accounts_df= datafields.get_largest_current_depositors_df(balancerV2_arbitrum, sg, conditions_list = json.dumps({'totalValueLockedUSD_gt': 1000000}), positions_conditions_list=json.dumps({"timestampClosed": None}))
     accounts_df = datafields.merge_dfs([mainnet_accounts_df, matic_accounts_df, arbitrum_accounts_df], 'Position Value')
 
     col1, col2, col3 = st.columns(3)
@@ -1341,15 +1341,48 @@ elif st.session_state['tab'] == 'By Pool':
         )
     with col3:
         st.subheader('Number of swaps')
+        key = "Swap Count " + str(pool_data['Name'].tolist()[0])
+        if key not in st.session_state['chart_states']:
+            xaxis_end = int(pool_timeseries['timestamp'][len(pool_timeseries['timestamp'])-1])
+            xaxis_start = int(pool_timeseries['timestamp'][0])
+            if (xaxis_end - xaxis_start) > 365:
+                xaxis_start = xaxis_end - 365
+            st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'USD'}
+        st.subheader(key)
+        
+        state_val = st.session_state['chart_states'][key]
+        
+        chart_window_input(key, state_val)
+        ccy_selection('chart',key, state_val)
+        protocol_rev_from_pool = charts.generate_line_chart(pool_timeseries, key, xaxis='timestamp', yaxis="Swap Count", xaxis_zoom_start=state_val['window_start'], xaxis_zoom_end=state_val['window_end'], ccy=state_val['ccy'])
+        st_pyecharts(
+            chart=protocol_rev_from_pool.LINE_CHART,
+            height='450px',
+            key=key,
+        )
 
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
         st.subheader('Largest 10 Depositors on pool')
+        key = 'Largest Depositors'
+
+        copy_df = pool_data.sort_values(by="Amount In USD",ascending=False)
+        copy_df.index = range(1, len(copy_df) + 1)
+        largest_depos_table = charts.generate_standard_table(copy_df[['Account ID', "Amount In USD", "Amount In Tokens"]][:10])        
+        st.markdown(largest_depos_table, unsafe_allow_html=True)
 
     with col2:
         st.subheader('Largest 10 Traders by volume past 30d')
+        pool_condition=json.dumps({"id": pool_data.index.tolist()[0]})
+        # positions_conditions=json.dumps(list([subgraph_to_use.Position.timestampClosed == None or subgraph_to_use.Position.timestampClosed > int(datetime.datetime.timestamp(datetime.datetime.now())) - 86400 * 30]))
+        pool_depos = datafields.get_largest_current_depositors_df(subgraph_to_use, sg, conditions_list = pool_condition, positions_conditions_list=None)
+
+        # From pool_depos get list of unique account ids
+        # Make a fetch for swaps with conditions list = [timestamp within 30d, account in accountslist, pool = poolid]
+        # depos_table = charts.generate_standard_table(copy_df[['Account ID', 'Sum of Positions']][:10])
+        # st.markdown(depos_table, unsafe_allow_html=True)
 
     with col3:
         if len(swaps_by_range) > 0:
