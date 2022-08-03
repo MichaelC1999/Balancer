@@ -218,14 +218,18 @@ def get_top_x_liquidityPools(_subgraph, _sg, field, limit):
     return liquidityPools_df
 
 @st.cache(hash_funcs={subgrounds.subgraph.object.Object: lambda _: None}, allow_output_mutation=True)
-def merge_dfs(_dfs, sort_col):
+def merge_dfs(_dfs, sort_col, asc=False):
     df_return = pd.concat(_dfs, join='outer', axis=0).fillna(0)
-    df_return = df_return.sort_values(sort_col, ascending=False)
+    df_return = df_return.sort_values(sort_col, ascending=asc)
     return df_return
 
 @st.experimental_memo
-def get_swaps_df(_subgraph,_sg,sort_value,window_start=0,tx_above=0,tx_below=1000000000, pool_id=None):
-    conditions_list = {'timestamp_gt': window_start, 'amountInUSD_gt': tx_above, 'amountInUSD_lt': tx_below}
+def get_swaps_df(_subgraph,_sg,sort_value,window_start=0,tx_above=0,tx_below=10000000000, pool_id=None, conditions_list="{}"):
+
+    conditions_list = json.loads(conditions_list)
+    # conditions_list['timestamp_gt'] = window_start
+    # conditions_list['amountInUSD_gt'] = tx_above
+    # conditions_list['amountInUSD_lt'] = tx_below
     if pool_id is not None:
         conditions_list['pool'] = pool_id
     event = _subgraph.Query.swaps(
@@ -341,14 +345,13 @@ def get_veBAL_unlocks_df(_veBAL_subgraph, _sg):
       veBAL_data.unlockTime,
       veBAL_data.lockedBalance
     ])
-    df['Date'] = df['votingEscrowLocks_unlockTime'].apply(lambda x: datetime.utcfromtimestamp(int(x)))
-    df['timestamp'] = df['votingEscrowLocks_unlockTime']
-    df['Days'] = df['timestamp'].apply(lambda x: int(int(x)/86400))
-
     df = df.rename(columns={
         'votingEscrowLocks_lockedBalance':'Amount To Unlock',
         'votingEscrowLocks_unlockTime':'timestamp'
         })
+    df['Date'] = df['timestamp'].apply(lambda x: datetime.utcfromtimestamp(int(x)))
+    df['Days'] = df['timestamp'].apply(lambda x: int(int(x)/86400))
+
     print(df)
     return df
 
@@ -380,7 +383,7 @@ def get_veBAL_locked_df(_veBAL_subgraph, _sg):
     return df
 
 @st.experimental_memo
-def get_veBAL_top_wallets(_veBAL_subgraph, _sg):
+def get_veBAL_top_wallets(_veBAL_subgraph, _sg, network="mainnet"):
     veBAL_data = _veBAL_subgraph.Query.votingEscrowLocks(
         orderBy='lockedBalance',
         orderDirection='desc',
@@ -390,11 +393,37 @@ def get_veBAL_top_wallets(_veBAL_subgraph, _sg):
         veBAL_data.user.id,
         veBAL_data.lockedBalance
     ])
-
     df = df.rename(columns={
         'votingEscrowLocks_lockedBalance':'Locked Balance',
         'votingEscrowLocks_user_id':'Address'
         })
+
+    if df.empty is True:
+        return df
+
+    df["Address"] = df["Address"] + ' - (' + network + ')'
+
+    return df
+
+
+@st.experimental_memo
+def get_veBAL_gauges(_veBAL_subgraph, _sg, network="mainnet"):
+    veBAL_data = _veBAL_subgraph.Query.liquidityGauges(
+        first=100
+    )
+    df = _sg.query_df([
+        veBAL_data.id,
+        veBAL_data.tokens.totalDeposited
+    ])
+    df = df.rename(columns={
+        'liquidityGauges_tokens_totalDeposited':'Reward Token Balance',
+        'liquidityGauges_id':'Gauge ID'
+        })
+
+    if df.empty is True:
+        return df
+
+    df['Gauge ID'] = df['Gauge ID'] + ' - (' + network + ')'
 
     return df
 

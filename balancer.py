@@ -43,9 +43,14 @@ ARBITRUM_SUBGRAPH_URL = 'https://api.thegraph.com/subgraphs/name/nemani/balancer
 balancerV2_arbitrum = sg.load_subgraph(ARBITRUM_SUBGRAPH_URL)
 
 
+VOTE_BAL_SUBGRAPH_URL = 'https://api.thegraph.com/subgraphs/name/balancer-labs/balancer-gauges-polygon'
+veBAL_subgraph_matic = sg.load_subgraph(VOTE_BAL_SUBGRAPH_URL)
+
+VOTE_BAL_SUBGRAPH_URL = 'https://api.thegraph.com/subgraphs/name/balancer-labs/balancer-gauges-arbitrum'
+veBAL_subgraph_arbitrum = sg.load_subgraph(VOTE_BAL_SUBGRAPH_URL)
+
 VOTE_BAL_SUBGRAPH_URL = 'https://api.thegraph.com/subgraphs/name/balancer-labs/balancer-gauges'
-veBAL_Subgraph = sg.load_subgraph(VOTE_BAL_SUBGRAPH_URL)
-#  python3.10 -m streamlit run protocols/balancerV2.py 
+veBAL_subgraph_mainnet = sg.load_subgraph(VOTE_BAL_SUBGRAPH_URL)
 
 #####################
 ##### Streamlit #####
@@ -250,9 +255,20 @@ financial_df = datafields.merge_financials_dfs(merge_fin)
 usage_df = datafields.merge_usage_dfs(merge_usage)
 
 revenue_df = datafields.get_revenue_df(financial_df)
-# veBAL_df = charts.get_veBAL_df(veBAL_Subgraph)
-veBAL_locked_df = datafields.get_veBAL_locked_df(veBAL_Subgraph, sg)
-veBAL_unlocks_df = datafields.get_veBAL_unlocks_df(veBAL_Subgraph, sg)
+# veBAL_df = charts.get_veBAL_df(veBAL_subgraph_mainnet)
+veBAL_locked_mainnet_df = datafields.get_veBAL_locked_df(veBAL_subgraph_mainnet, sg)
+veBAL_unlocks_mainnet_df = datafields.get_veBAL_unlocks_df(veBAL_subgraph_mainnet, sg)
+
+# veBAL_df = charts.get_veBAL_df(veBAL_subgraph_matic)
+veBAL_locked_matic_df = datafields.get_veBAL_locked_df(veBAL_subgraph_matic, sg)
+veBAL_unlocks_matic_df = datafields.get_veBAL_unlocks_df(veBAL_subgraph_matic, sg)
+
+# veBAL_df = charts.get_veBAL_df(veBAL_subgraph_arbitrum)
+veBAL_locked_arbitrum_df = datafields.get_veBAL_locked_df(veBAL_subgraph_arbitrum, sg)
+veBAL_unlocks_arbitrum_df = datafields.get_veBAL_unlocks_df(veBAL_subgraph_arbitrum, sg)
+
+veBAL_locked_df=datafields.merge_dfs([veBAL_locked_mainnet_df, veBAL_locked_matic_df, veBAL_locked_arbitrum_df], 'timestamp', asc=True)
+veBAL_unlocks_df=datafields.merge_dfs([veBAL_unlocks_mainnet_df, veBAL_unlocks_matic_df, veBAL_unlocks_arbitrum_df], 'timestamp', asc=True)
 
 mainnet_liquidityPools_df = datafields.get_pools_df(balancerV2_mainnet, sg, 'mainnet')
 matic_liquidityPools_df = datafields.get_pools_df(balancerV2_matic, sg, 'matic')
@@ -884,7 +900,7 @@ elif st.session_state['tab'] == 'Traders':
         key = 'Largest Trades'
         state_val = st.session_state['table_states'][key]
         st.subheader(key)
-        if largest_df != None:
+        if largest_df.empty is False:
             chart_window_input(key, state_val)
             ccy_selection('table',key, state_val)
             largest_df.index = range(1, len(largest_df) + 1)
@@ -1045,13 +1061,22 @@ elif st.session_state['tab'] == 'Treasury':
 
 elif st.session_state['tab'] == 'veBAL':
 
+    top_wallets_mainnet_df = datafields.get_veBAL_top_wallets(veBAL_subgraph_mainnet, sg, network="mainnet")
+    top_wallets_matic_df = datafields.get_veBAL_top_wallets(veBAL_subgraph_matic, sg, network="matic")
+    top_wallets_arbitrum_df = datafields.get_veBAL_top_wallets(veBAL_subgraph_arbitrum, sg, network="arbitrum")
+
+    top_wallets_df = datafields.merge_dfs([top_wallets_mainnet_df, top_wallets_matic_df, top_wallets_arbitrum_df], "Locked Balance")
+
+    top_wallets_df.index = range(1, len(top_wallets_df) + 1)
+
     col1, col2, col3 = st.columns(3)
 
     with col1:
         key = 'Locked Balance'
         if key not in st.session_state['chart_states']:
-            xaxis_end = int(veBAL_locked_df['Days'][len(veBAL_locked_df['Days'])-1])
-            xaxis_start = int(veBAL_locked_df['Days'][0])
+            xaxis_end = int(veBAL_locked_df.iloc[len(veBAL_locked_df['Days'])-1, veBAL_locked_df.columns.get_loc("Days")])
+            
+            xaxis_start = int(veBAL_locked_df.iloc[0, veBAL_locked_df.columns.get_loc("Days")])
             if (xaxis_end - xaxis_start) > 365:
                 xaxis_start = xaxis_end - 365
             st.session_state['chart_states'][key] = {'window_start': xaxis_start, 'window_end': xaxis_end, 'ccy': 'veBAL'}
@@ -1136,12 +1161,20 @@ elif st.session_state['tab'] == 'veBAL':
 
     with col1:
         st.subheader('Gauges')
+        veBAL_gauges_mainnet = datafields.get_veBAL_gauges(veBAL_subgraph_mainnet, sg, network="mainnet")
+        veBAL_gauges_matic = datafields.get_veBAL_gauges(veBAL_subgraph_matic, sg, network="matic")
+        veBAL_gauges_arbitrum = datafields.get_veBAL_gauges(veBAL_subgraph_arbitrum, sg, network="arbitrum")
+
+        veBAL_gauges=datafields.merge_dfs([veBAL_gauges_mainnet, veBAL_gauges_matic, veBAL_gauges_arbitrum], 'Reward Token Balance')
+
+        veBAL_gauges.index = range(1, len(veBAL_gauges) + 1)
+        gauges_table = charts.generate_standard_table(veBAL_gauges[['Gauge ID', 'Reward Token Balance']][:20])
+        st.markdown(gauges_table, unsafe_allow_html=True)
 
     with col2:
         st.subheader('Top 20 wallets by voting power')
-        top_wallets_df = datafields.get_veBAL_top_wallets(veBAL_Subgraph, sg)
-        top_wallets_df.index = range(1, len(top_wallets_df) + 1)
-        top_wallet_table = charts.generate_standard_table(top_wallets_df[['Address', 'Locked Balance']])
+
+        top_wallet_table = charts.generate_standard_table(top_wallets_df[['Address', 'Locked Balance']][:20])
         st.markdown(top_wallet_table, unsafe_allow_html=True)
 
     with col3:
@@ -1378,11 +1411,16 @@ elif st.session_state['tab'] == 'By Pool':
         pool_condition=json.dumps({"id": pool_data.index.tolist()[0]})
         # positions_conditions=json.dumps(list([subgraph_to_use.Position.timestampClosed == None or subgraph_to_use.Position.timestampClosed > int(datetime.datetime.timestamp(datetime.datetime.now())) - 86400 * 30]))
         pool_depos = datafields.get_largest_current_depositors_df(subgraph_to_use, sg, conditions_list = pool_condition, positions_conditions_list=None)
-
+        acct_list = list(pool_depos.groupby('Account ID')['Account ID'].apply(lambda x: list(x)[0]))
+        
         # From pool_depos get list of unique account ids
+        swaps = datafields.get_swaps_df(subgraph_to_use, sg, "amountInUSD", window_start=int(datetime.datetime.timestamp(datetime.datetime.now())) - 86400 * 30, pool_id=pool_data.index.tolist()[0], conditions_list=json.dumps({"account_": {"id_in": acct_list}}))
+
+        swap_volume_df= pd.DataFrame({"Wallet": swaps.groupby('Wallet')['Wallet'].first(), "Swap Volume": swaps.groupby('Wallet')['Amount In'].sum()}).sort_values("Swap Volume", ascending=False)
+        swap_volume_df.index = range(1, len(swap_volume_df) + 1)
         # Make a fetch for swaps with conditions list = [timestamp within 30d, account in accountslist, pool = poolid]
-        # depos_table = charts.generate_standard_table(copy_df[['Account ID', 'Sum of Positions']][:10])
-        # st.markdown(depos_table, unsafe_allow_html=True)
+        swap_volume_table = charts.generate_standard_table(swap_volume_df[['Wallet', 'Swap Volume']][:10])
+        st.markdown(swap_volume_table, unsafe_allow_html=True)
 
     with col3:
         if len(swaps_by_range) > 0:
